@@ -12,11 +12,11 @@ website:
   navbar: 
     left: 
       - text: Reports
-        href: reports/index.qmd
+        href: reports/index.html
       # - text: Presentations
       #   href: presentations/index.qmd
       - text: Manuscript
-        href: manuscript/manuscript.qmd
+        href: manuscript/manuscript.html
 
 format:
   html:
