@@ -8,4 +8,4 @@ their place within the interaction networks.
 It is largely inspired by the work of [@Coux-etal-2016].
 
 We provide [reports](reports/index.qmd) detailing our analyses, and the
-associated [manuscript](manuscript/manuscript.qmd)
+associated [manuscript](output/manuscript.qmd)
