@@ -2,4 +2,4 @@
 title: "Reports"
 ---
 
-We list below the reports associated to the project.
+We list below reports associated to the project.
