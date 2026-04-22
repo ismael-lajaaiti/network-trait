@@ -1,0 +1,82 @@
+---
+title: "Network and traits"
+author: "Benoît Pichon, Ismaël Lajaaiti"
+bibliography: ../references.bib
+prefer-html: true
+format:
+  html:
+    toc: true
+    embed-resources: true
+  pdf:
+    documentclass: article
+    toc: true
+comments:
+    hypothesis: true
+crossref:
+  custom:
+    - kind: float
+      reference-prefix: Figure S
+      space-before-numbering: false
+      key: sfig
+      latex-env: sfig
+      latex-list-of-description: Supporting Figure
+---
+
+```{r}
+#| output: false
+#| echo: false
+library(renv)
+renv::load()
+renv::restore()
+renv::status()
+
+library(here)
+library(targets)
+tar_config_set(
+  store = here::here("_targets")
+)
+```
+
+Three different ways to define robustness:
+- functional trait space
+- static network
+- dynamic secondary extinctions
+
+What are the relationships between these different facets of robustness. It
+makes sense to have a global view, in particular in plant-pollinator network,
+where traits govern species interactions.
+
+- *Question 1:* What is the link between the functional/phylogenetic and network
+role of species in different systems? Does uniqueness and originality drive
+network species' roles?
+- *Question 2:* Is there a link between the contribution of species to the
+functional space and the possible secondary extinction their lead to? Ismaël:
+This question makes me think of Alice's work with Jeff. She studied functional
+contribution as a dynamic role of the species in the community. Maybe we could
+try to relate dynamical functional contribution to trait uniqueness/originality? 
+
+
+Some steps that need to be done:
+
+- Read the papers and redefine the questions depending on exactly what has been
+done
+
+- Think about some descriptors of species role in networks (degree, centrality
+measures, contribution to nestedness or modularity, ...XXX)
+
+- Think about uniqueness and originality using functional traits, and when
+possible, phylogenetic data?
+
+- Find good data to test that: Solieveres paper, other papers where there is the
+interaction network (plant-pollinator, so we extend that in foodwebs?),
+possibility to use Biodesert (this would include Nico Yoann and Fernando at
+least then)
+- Perform the analyses
+
+## Notes Ismaël
+
+- @Coux-etal-2016:
+  - [Code](https://github.com/CamilleCoux/Ntw_FD_roles/tree/master) and 
+  [data](https://figshare.com/articles/dataset/Plant_pollinator_pollen_transportation_network_traits_and_pollinator_abundances_/3154078)
+  - PCoA is used to summarise traits, could investigate the role of each trait
+  individually in the explaining species position in the network.

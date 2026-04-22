@@ -1,0 +1,24 @@
+project:
+  type: website
+  render:
+    - index.qmd
+    # - analysis/*.qmd
+    # - presentations/*.qmd
+    - output/manuscript.qmd
+  output-dir: docs
+
+website:
+  title: "Network and Traits Project"
+  navbar: 
+    left: 
+      - text: Reports
+        href: reports/index.qmd
+      # - text: Presentations
+      #   href: presentations/index.qmd
+      - text: Manuscript
+        href: manuscript/manuscript.qmd
+
+format:
+  html:
+    toc: true
+    theme: cosmo
