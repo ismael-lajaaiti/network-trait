@@ -4,14 +4,14 @@
     "href": "output/manuscript.html",
     "title": "Network and traits",
     "section": "",
-    "text": "Three different ways to define robustness: - functional trait space - static network - dynamic secondary extinctions\nWhat are the relationships between these different facets of robustness. It makes sense to have a global view, in particular in plant-pollinator network, where traits govern species interactions.\nSome steps that need to be done:"
+    "text": "Three different ways to define robustness: - functional trait space - static network - dynamic secondary extinctions\nWhat are the relationships between these different facets of robustness. It makes sense to have a global view, in particular in plant-pollinator network, where traits govern species interactions.\n\nQuestion 1: What is the link between the functional/phylogenetic and network role of species in different systems? Does uniqueness and originality drive network species’ roles?\nQuestion 2: Is there a link between the contribution of species to the functional space and the possible secondary extinction their lead to? Ismaël: This question makes me think of Alice’s work with Jeff. She studied functional contribution as a dynamic role of the species in the community. Maybe we could try to relate dynamical functional contribution to trait uniqueness/originality?\n\nSome steps that need to be done:\n\nRead the papers and redefine the questions depending on exactly what has been done\nThink about some descriptors of species role in networks (degree, centrality measures, contribution to nestedness or modularity, …XXX)\nThink about uniqueness and originality using functional traits, and when possible, phylogenetic data?\nFind good data to test that: Solieveres paper, other papers where there is the interaction network (plant-pollinator, so we extend that in foodwebs?), possibility to use Biodesert (this would include Nico Yoann and Fernando at least then)\nPerform the analyses"
   },
   {
     "objectID": "output/manuscript.html#notes-ismaël",
     "href": "output/manuscript.html#notes-ismaël",
     "title": "Network and traits",
     "section": "Notes Ismaël",
-    "text": "Notes Ismaël\n\nCoux et al. (2016):\n\nCode and data\nPCoA is used to summarise traits, could investigate the role of each trait individually in the explaining species position in the network."
+    "text": "Notes Ismaël\n\nCoux et al. (2016):\n\nCode and data\nPCoA is used to summarise traits, could investigate the role of each trait individually in explaining species position in the network."
   },
   {
     "objectID": "index.html",
@@ -19,5 +19,19 @@
     "title": "Network and Traits Project",
     "section": "",
     "text": "This project focuses on the link between the originality of species traits and their place within the interaction networks. It is largely inspired by the work of (Coux et al. 2016).\nWe provide reports detailing our analyses, and the associated manuscript\n\n\n\n\nReferences\n\nCoux, Camille, Romina Rader, Ignasi Bartomeus, and Jason M. Tylianakis. 2016. “Linking Species Functional Roles to Their Network Roles.” Ecology Letters 19 (7): 762–70. https://doi.org/10.1111/ele.12612."
+  },
+  {
+    "objectID": "reports/index.html",
+    "href": "reports/index.html",
+    "title": "Reports",
+    "section": "",
+    "text": "We list below reports associated to the project."
+  },
+  {
+    "objectID": "output/manuscript.html#notes-copied-from-typst-document",
+    "href": "output/manuscript.html#notes-copied-from-typst-document",
+    "title": "Network and traits",
+    "section": "",
+    "text": "Three different ways to define robustness: - functional trait space - static network - dynamic secondary extinctions\nWhat are the relationships between these different facets of robustness. It makes sense to have a global view, in particular in plant-pollinator network, where traits govern species interactions.\n\nQuestion 1: What is the link between the functional/phylogenetic and network role of species in different systems? Does uniqueness and originality drive network species’ roles?\nQuestion 2: Is there a link between the contribution of species to the functional space and the possible secondary extinction their lead to? Ismaël: This question makes me think of Alice’s work with Jeff. She studied functional contribution as a dynamic role of the species in the community. Maybe we could try to relate dynamical functional contribution to trait uniqueness/originality?\n\nSome steps that need to be done:\n\nRead the papers and redefine the questions depending on exactly what has been done\nThink about some descriptors of species role in networks (degree, centrality measures, contribution to nestedness or modularity, …XXX)\nThink about uniqueness and originality using functional traits, and when possible, phylogenetic data?\nFind good data to test that: Solieveres paper, other papers where there is the interaction network (plant-pollinator, so we extend that in foodwebs?), possibility to use Biodesert (this would include Nico Yoann and Fernando at least then)\nPerform the analyses"
   }
 ]

@@ -1,5 +1,6 @@
 ---
 title: "Reports"
+format: "html"
 ---
 
 We list below reports associated to the project.

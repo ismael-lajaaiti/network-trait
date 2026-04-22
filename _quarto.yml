@@ -2,8 +2,7 @@ project:
   type: website
   render:
     - index.qmd
-    # - analysis/*.qmd
-    # - presentations/*.qmd
+    - reports/index.qmd
     - output/manuscript.qmd
   output-dir: docs
 
@@ -12,11 +11,11 @@ website:
   navbar: 
     left: 
       - text: Reports
-        href: reports/index.html
+        href: reports/index.qmd
       # - text: Presentations
       #   href: presentations/index.qmd
       - text: Manuscript
-        href: manuscript/manuscript.html
+        href: output/manuscript.qmd
 
 format:
   html:

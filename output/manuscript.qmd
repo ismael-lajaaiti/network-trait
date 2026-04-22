@@ -37,6 +37,8 @@ tar_config_set(
 )
 ```
 
+## Notes copied from typst document
+
 Three different ways to define robustness:
 - functional trait space
 - static network
@@ -79,4 +81,4 @@ least then)
   - [Code](https://github.com/CamilleCoux/Ntw_FD_roles/tree/master) and 
   [data](https://figshare.com/articles/dataset/Plant_pollinator_pollen_transportation_network_traits_and_pollinator_abundances_/3154078)
   - PCoA is used to summarise traits, could investigate the role of each trait
-  individually in the explaining species position in the network.
+  individually in explaining species position in the network.
