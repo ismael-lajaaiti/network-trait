@@ -11,7 +11,7 @@
     "href": "output/manuscript.html#notes-ismaël",
     "title": "Network and traits",
     "section": "Notes Ismaël",
-    "text": "Notes Ismaël\n\nCoux et al. (2016):\n\nCode and data\nPCoA is used to summarise traits, could investigate the role of each trait individually in explaining species position in the network."
+    "text": "Notes Ismaël\n\nCoux et al. (2016):\n\nCode and data\nOriginality: distance to the community average\nUniqueness: distance to the nearest neighbour\nPCoA is used to summarise traits, could investigate the role of each trait individually in explaining species position in the network."
   },
   {
     "objectID": "index.html",

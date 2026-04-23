@@ -1,7 +1,3 @@
-library(renv)
-renv::status()
-renv::restore()
-renv::load()
 library(targets)
 library(tarchetypes)
 lapply(list.files("R", full.names = TRUE), source)

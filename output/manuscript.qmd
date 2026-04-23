@@ -80,5 +80,7 @@ least then)
 - @Coux-etal-2016:
   - [Code](https://github.com/CamilleCoux/Ntw_FD_roles/tree/master) and 
   [data](https://figshare.com/articles/dataset/Plant_pollinator_pollen_transportation_network_traits_and_pollinator_abundances_/3154078)
+  - **Originality**: distance to the community average
+  - **Uniqueness**: distance to the nearest neighbour
   - PCoA is used to summarise traits, could investigate the role of each trait
   individually in explaining species position in the network.
