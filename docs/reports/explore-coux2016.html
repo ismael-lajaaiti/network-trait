@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Reports – Network and Traits Project</title>
+<title>Explore data of Coux et al. 2016 – Network and Traits Project</title>
 <style>
 
 code{white-space: pre-wrap;}
@@ -21,25 +21,41 @@ width: 0.8em;
 margin: 0 0.8em 0.2em -1em;  vertical-align: middle;
 }
 
-div.csl-bib-body { }
-div.csl-entry {
-clear: both;
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
 }
-.hanging-indent div.csl-entry {
-margin-left:2em;
-text-indent:-2em;
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
-div.csl-left-margin {
-min-width:2em;
-float:left;
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
 }
-div.csl-right-inline {
-margin-left:2em;
-padding-left:1em;
+pre.numberSource { margin-left: 3em; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
-div.csl-indent {
-margin-left: 2em;
-}</style>
+</style>
 
 
 <script>const headroomChanged = new CustomEvent("quarto-hrChanged", {
@@ -4034,7 +4050,7 @@ vertical-align: -.125em;
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="../reports/index.html" aria-current="page"> 
+    <a class="nav-link" href="../reports/index.html"> 
 <span class="menu-text">Reports</span></a>
   </li>  
   <li class="nav-item">
@@ -4052,15 +4068,21 @@ vertical-align: -.125em;
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#overview-of-the-data" id="toc-overview-of-the-data" class="nav-link active" data-scroll-target="#overview-of-the-data">Overview of the data</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Reports</h1>
+<h1 class="title">Explore data of Coux et al. 2016</h1>
 </div>
 
 
@@ -4077,19 +4099,130 @@ vertical-align: -.125em;
 </header>
 
 
-<p>We list below reports associated to the project:</p>
-<ul>
-<li><a href="explore-coux2016.html">Explore data from <span class="citation" data-cites="Coux-etal-2016">Coux et al. (<span>2016</span>)</span></a></li>
-</ul>
-
-
-
-
-<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
-<div id="ref-Coux-etal-2016" class="csl-entry" role="listitem">
-Coux, Camille, Romina Rader, Ignasi Bartomeus, and Jason M. Tylianakis. 2016. <span>“Linking Species Functional Roles to Their Network Roles.”</span> <em>Ecology Letters</em> 19 (7): 762–70. <a href="https://doi.org/10.1111/ele.12612">https://doi.org/10.1111/ele.12612</a>.
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(renv)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>renv<span class="sc">::</span><span class="fu">load</span>()</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(targets)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(here)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">tar_config_set</span>(</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">store =</span> here<span class="sc">::</span><span class="fu">here</span>(<span class="st">&quot;_targets&quot;</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-</div></section></div></main> <!-- /main -->
+<p>Let’s begin by looking at the data.</p>
+<section id="overview-of-the-data" class="level2">
+<h2 class="anchored" data-anchor-id="overview-of-the-data">Overview of the data</h2>
+<p>First, we have the interaction networks.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">tar_read</span>(data_coux)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(data<span class="sc">$</span>interaction)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>       site     pollinator    plant links
+1 blabrolee    A_mellifera Alcea_sp     2
+2 blabrolee        E_tenax Alcea_sp     0
+3 blabrolee I_promissorius Alcea_sp     0
+4 blabrolee     L_sordidum Alcea_sp     0
+5 blabrolee     N_producta Alcea_sp     0
+6 blabrolee  P_pseudorudis Alcea_sp     0</code></pre>
+</div>
+</div>
+<p>We have plant traits.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(data<span class="sc">$</span>plant_trait)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&#39;data.frame&#39;:   14 obs. of  16 variables:
+ $ plant                                 : chr  &quot;Lolium_sp&quot; &quot;Daucus_carota&quot; &quot;Chenopodium_album&quot; &quot;Cordyline_sp&quot; ...
+ $ growth_form                           : chr  &quot;grass&quot; &quot;herb&quot; &quot;herb&quot; &quot;tree&quot; ...
+ $ annual_perennial                      : chr  &quot;annual&quot; &quot;biennial&quot; &quot;annual&quot; &quot;perennial&quot; ...
+ $ single_inflo                          : int  2 2 2 2 1 2 2 1 2 2 ...
+ $ type_inflorescence                    : int  1 1 1 1 0 1 3 0 2 1 ...
+ $ pollnec_access                        : int  1 1 1 1 2 2 1 1 2 1 ...
+ $ flowers_per_inflorescence             : int  2 3 2 3 1 1 2 1 2 1 ...
+ $ flower_symmetry                       : chr  &quot;zygomorphic&quot; &quot;actinomorphic&quot; &quot;actinomorphic&quot; &quot;actinomorphic&quot; ...
+ $ inflorescence_symmetry                : chr  &quot;zygomorphic&quot; &quot;actinomorphic&quot; &quot;actinomorphic&quot; &quot;actinomorphic&quot; ...
+ $ spring                                : int  1 0 0 0 0 0 1 0 0 0 ...
+ $ summer                                : int  1 1 1 1 1 1 0 1 1 1 ...
+ $ fall                                  : int  0 1 1 0 1 0 0 0 0 1 ...
+ $ winter                                : int  0 0 0 0 0 0 1 0 0 0 ...
+ $ flower_sex                            : chr  &quot;bisexual&quot; &quot;bisexual&quot; &quot;bisexual&quot; &quot;bisexual&quot; ...
+ $ floral_fragrance                      : int  1 1 NA 3 2 1 1 1 1 3 ...
+ $ amount_of_nectar_per_poll_unit_per_day: int  1 3 1 2 3 3 1 2 2 2 ...</code></pre>
+</div>
+</div>
+<p>We have pollinator traits.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(data<span class="sc">$</span>pollinator_trait)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&#39;data.frame&#39;:   16 obs. of  16 variables:
+ $ pollinator        : chr  &quot;A_mellifera&quot; &quot;B_terrestris&quot; &quot;C_stygia&quot; &quot;C_vicina&quot; ...
+ $ body_length       : num  12 14.3 10.9 9 3.9 14.3 8.6 13 5.5 9.7 ...
+ $ body_weigth       : num  4.5 6.8 5.7 4.9 1.6 5.1 3.2 2 1.7 2.2 ...
+ $ flw_vis_time      : num  4.1 3.68 NA 10.1 NA ...
+ $ pref_nec          : num  100 100 NA 100 NA 75 0 NA 100 14.3 ...
+ $ pref_pol          : num  0 0 NA NA NA 25 100 NA 0 85.7 ...
+ $ soc_sol           : chr  &quot;social&quot; &quot;social&quot; &quot;solitary&quot; &quot;solitary&quot; ...
+ $ larv_necpol       : int  1 1 0 0 0 0 0 0 1 0 ...
+ $ larv_plant        : int  0 0 1 1 1 1 1 0 0 0 ...
+ $ larv_carr         : int  0 0 1 1 0 0 0 0 0 0 ...
+ $ larv_paras        : int  0 0 0 0 0 0 0 1 0 0 ...
+ $ larv_dung         : int  0 0 0 0 0 0 0 0 0 0 ...
+ $ larv_dinsct       : int  0 0 0 0 0 0 0 0 0 1 ...
+ $ Carrying_structure: chr  &quot;corbicula&quot; &quot;corbicula&quot; &quot;None&quot; &quot;None&quot; ...
+ $ season            : chr  &quot;Aug&quot; &quot;Jan&quot; &quot;Jun&quot; &quot;Jan&quot; ...
+ $ daily             : chr  &quot;X2pm&quot; &quot;X12pm&quot; &quot;X12pm&quot; &quot;X10am&quot; ...</code></pre>
+</div>
+</div>
+<p>As well as, plant abundances, which is only presence (1) absence (0).</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(data<span class="sc">$</span>plant_abundance)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&#39;data.frame&#39;:   21 obs. of  15 variables:
+ $ site                : chr  &quot;blabrolee&quot; &quot;blahamlak&quot; &quot;blaheslee&quot; &quot;blajergre&quot; ...
+ $ Lolium_sp           : int  1 1 1 1 1 1 1 1 1 1 ...
+ $ Daucus_carota       : int  1 0 1 0 0 1 0 0 0 0 ...
+ $ Chenopodium_album   : int  0 1 1 1 0 0 1 0 0 0 ...
+ $ Cordyline_sp        : int  0 0 1 0 1 0 1 0 0 0 ...
+ $ Alcea_sp            : int  1 0 1 0 0 1 0 1 0 0 ...
+ $ Rubus_fruticosus    : int  1 1 0 0 0 0 1 0 1 0 ...
+ $ alnus_serrulate     : int  0 1 0 0 0 0 1 0 0 0 ...
+ $ Malva_spp           : int  0 1 1 0 0 0 0 0 0 0 ...
+ $ Taraxacum_officinale: int  1 1 1 0 1 1 1 1 1 1 ...
+ $ Raphanus_sp         : int  0 1 1 0 0 0 1 1 0 1 ...
+ $ Cirsium_vulgare     : int  1 1 1 0 1 1 1 1 1 1 ...
+ $ Eucalyptus_globulus : int  1 1 1 0 0 0 1 0 1 1 ...
+ $ Eucalyptus_nitens   : int  1 1 1 1 1 0 1 0 0 1 ...
+ $ Trifolium_sp        : int  1 1 1 0 1 1 1 0 1 1 ...</code></pre>
+</div>
+</div>
+<p>And pollinator abundances.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(data<span class="sc">$</span>pollinator_abundance)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&#39;data.frame&#39;:   21 obs. of  17 variables:
+ $ site             : chr  &quot;blabrolee&quot; &quot;blahamlak&quot; &quot;blaheslee&quot; &quot;blajergre&quot; ...
+ $ A_mellifera      : int  248 115 522 53 10 90 335 21 0 39 ...
+ $ B_terrestris     : int  0 0 49 18 0 0 36 0 23 0 ...
+ $ C_stygia         : int  0 0 0 0 0 0 0 0 0 0 ...
+ $ C_vicina         : int  0 0 0 0 0 0 0 0 0 0 ...
+ $ D_platura        : int  0 21 52 0 0 0 114 0 0 0 ...
+ $ E_tenax          : int  5 0 5 0 0 0 0 0 0 0 ...
+ $ H_hochstetteri   : int  0 7 0 0 0 0 0 0 0 0 ...
+ $ I_promissorius   : int  2 0 2 0 0 0 0 0 0 0 ...
+ $ L_sordidum       : int  3625 0 808 0 0 522 380 202 0 156 ...
+ $ M_novae_zelandiae: int  0 0 0 0 8 0 7 0 0 0 ...
+ $ N_producta       : int  7 0 5 0 0 0 0 0 0 0 ...
+ $ O_atrovirens     : int  0 27 0 0 2 4 0 0 0 0 ...
+ $ O_varia          : int  0 10 6 0 0 0 0 0 2 0 ...
+ $ P_marginata      : int  0 0 1 7 0 0 1 0 0 0 ...
+ $ P_pseudorudis    : int  30 60 59 0 0 0 0 0 0 0 ...
+ $ T_orthodoxus     : int  0 1 1 0 0 0 0 0 0 0 ...</code></pre>
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
     const icon = "";

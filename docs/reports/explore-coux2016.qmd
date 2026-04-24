@@ -1,0 +1,20 @@
+---
+title: "Explore data of Coux et al. 2016"
+format: 
+  html:
+    embed-resources: true
+execute:
+    message: false
+    warning: false
+---
+
+```{r}
+#| output: false
+library(renv)
+renv::load()
+library(targets)
+library(here)
+tar_config_set(
+  store = here::here("_targets")
+)
+```

@@ -1,0 +1,60 @@
+---
+title: "Explore data of Coux et al. 2016"
+format: 
+  html:
+    embed-resources: true
+execute:
+    message: false
+    warning: false
+---
+
+```{r}
+#| output: false
+library(renv)
+renv::load()
+library(targets)
+library(here)
+tar_config_set(
+  store = here::here("_targets")
+)
+library(dplyr)
+```
+
+Let's begin by looking at the data.
+
+## Overview of the data
+
+First, we have the interaction networks.
+
+```{r}
+data <- tar_read(data_coux)
+head(data$interaction)
+```
+
+We have plant traits.
+
+```{r}
+str(data$plant_trait)
+```
+
+We have pollinator traits.
+
+```{r}
+str(data$pollinator_trait)
+```
+
+As well as, plant abundances, which is only presence (1) absence (0).
+
+```{r}
+str(data$plant_abundance)
+```
+
+And pollinator abundances.
+
+```{r}
+str(data$pollinator_abundance)
+```
+
+
+
+

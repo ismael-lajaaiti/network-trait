@@ -1,6 +1,9 @@
 ---
 title: "Reports"
 format: "html"
+bibliography: ../references.bib
 ---
 
-We list below reports associated to the project.
+We list below reports associated to the project:
+
+- [Explore data from @Coux-etal-2016](explore-coux2016.html)

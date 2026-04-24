@@ -25,7 +25,13 @@ list(
   tar_quarto(
     index_reports,
     "reports/index.qmd",
-    quarto_args = c("--embed-resources"),
-    quiet = FALSE
-  )
+    quarto_args = c("--embed-resources")
+  ),
+  tar_quarto(
+    report_coux,
+    "reports/explore-coux2016.qmd",
+    quarto_args = c("--embed-resources")
+  ),
+  tar_target(data_coux_folder, "data/raw/coux2016/", format = "file"),
+  tar_target(data_coux, read_coux_data(data_coux_folder))
 )
