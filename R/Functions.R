@@ -181,10 +181,15 @@ Compute_functional_importance=function(trait_data, abundance_data,
       Change_wFDiv=weighted_FD$FDiv-weighted_FD_remaining$FDiv,
       Change_FEve=unweighted_FD$FEve-unweighted_FD_remaining$FEve,
       Change_FDis=unweighted_FD$FDis-unweighted_FD_remaining$FDis,
-      Change_FDiv=unweighted_FD$FDiv-unweighted_FD_remaining$FDiv))
+      Change_FDiv=unweighted_FD$FDiv-unweighted_FD_remaining$FDiv,
+      Rela_Change_wFEve=(weighted_FD$FEve-weighted_FD_remaining$FEve)/weighted_FD$FEve,
+      Rela_Change_wFDis=(weighted_FD$FDis-weighted_FD_remaining$FDis)/weighted_FD$FDis,
+      Rela_Change_wFDiv=(weighted_FD$FDiv-weighted_FD_remaining$FDiv)/weighted_FD$FDiv,
+      Rela_Change_FEve=(unweighted_FD$FEve-unweighted_FD_remaining$FEve)/unweighted_FD$FEve,
+      Rela_Change_FDis=(unweighted_FD$FDis-unweighted_FD_remaining$FDis)/unweighted_FD$FDis,
+      Rela_Change_FDiv=(unweighted_FD$FDiv-unweighted_FD_remaining$FDiv)/unweighted_FD$FDiv))
   }
-  
-  
+
   return(list(Change_FD=d_change_FD,
               Species_rarity=d_species,
               Sites=d_all_sites))
