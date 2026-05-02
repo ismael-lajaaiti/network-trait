@@ -4107,7 +4107,8 @@ vertical-align: -.125em;
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">tar_config_set</span>(</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">store =</span> here<span class="sc">::</span><span class="fu">here</span>(<span class="st">&quot;_targets&quot;</span>)</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(bipartite)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Let’s begin by looking at the data.</p>
 <section id="overview-of-the-data" class="level2">
@@ -4216,6 +4217,33 @@ vertical-align: -.125em;
  $ P_marginata      : int  0 0 1 7 0 0 1 0 0 0 ...
  $ P_pseudorudis    : int  30 60 59 0 0 0 0 0 0 0 ...
  $ T_orthodoxus     : int  0 1 1 0 0 0 0 0 0 0 ...</code></pre>
+</div>
+</div>
+<p>We have coded a function to compute species level network metrics using the <code>bipartite::specieslevel</code> function.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>net_metrics <span class="ot">&lt;-</span> <span class="fu">tar_read</span>(net_metrics)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>net_metrics</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 232 × 22
+   site      degree normalised.degree species.strength interaction.push.pull
+   &lt;chr&gt;      &lt;dbl&gt;             &lt;dbl&gt;            &lt;dbl&gt;                 &lt;dbl&gt;
+ 1 blabrolee      7             0.778           5.36                   0.623
+ 2 blabrolee      1             0.111           1                      0    
+ 3 blabrolee      3             0.333           0.435                 -0.188
+ 4 blabrolee      2             0.222           0.354                 -0.323
+ 5 blabrolee      4             0.444           1.50                   0.124
+ 6 blabrolee      3             0.333           0.354                 -0.215
+ 7 blabrolee      1             0.167           0.0690                -0.931
+ 8 blabrolee      3             0.5             0.672                 -0.109
+ 9 blabrolee      1             0.167           0.167                 -0.833
+10 blabrolee      1             0.167           0.0690                -0.931
+# ℹ 222 more rows
+# ℹ 17 more variables: nestedrank &lt;dbl&gt;, PDI &lt;dbl&gt;, resource.range &lt;dbl&gt;,
+#   species.specificity.index &lt;dbl&gt;, PSI &lt;dbl&gt;,
+#   node.specialisation.index.NSI &lt;dbl&gt;, betweenness &lt;dbl&gt;,
+#   weighted.betweenness &lt;dbl&gt;, closeness &lt;dbl&gt;, weighted.closeness &lt;dbl&gt;,
+#   Fisher.alpha &lt;dbl&gt;, partner.diversity &lt;dbl&gt;, effective.partners &lt;dbl&gt;,
+#   proportional.generality &lt;dbl&gt;, proportional.similarity &lt;dbl&gt;, d &lt;dbl&gt;, …</code></pre>
 </div>
 </div>
 

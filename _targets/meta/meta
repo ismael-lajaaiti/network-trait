@@ -6,7 +6,11 @@ manuscript|stem|a0c5bde448b41159|9403ed582df997c9|2c530c1562a7fbd1|-1793997187|d
 data_coux_folder|stem|5af7ad597f5e4b57|7c695062a22208a2|2c530c1562a7fbd1|1019364934|data/raw/coux2016/|t20567.58125s|s36814b|36814|file|local|vector|||0.334||
 index_main|stem|15027c80b532ef5e|13f87907903fb413|2c530c1562a7fbd1|-27787746|docs/index.html*index.qmd|t20567.5926972349s|s2189402b|2189402|file|local|vector|||1.758||
 index_reports|stem|cb41c9e26bbeca53|0cef4be58c9338c4|2c530c1562a7fbd1|-848029303|docs/reports/index.html*reports/index.qmd|t20567.5927185539s|s2188999b|2188999|file|local|vector|||1.811||
+data_coux|stem|2807c6202c5a8f3a|32806837bb5bad42|6e481ed26cd65370|-879198766||t20575.2787715695s|s3138b|3138|rds|local|vector|||0.344||
+web_list|stem|ca643ba8f70d0fb6|912766d81405e828|546da13768eb7be2|-1859957079||t20575.2936247088s|s1388b|1388|rds|local|vector|||0.416||
+net_metrics|stem|7956ce28a287ab3b|55a3131be01805a8|df26b9fad1dbdb18|-796231633||t20575.3105380898s|s11581b|11581|rds|local|vector|||2.466|Web contains too few nodes to compute closeness or betweenness!. Web contains too few nodes to compute closeness or betweenness!. `cols` is now required when using `unnest()`. ℹ Please use `cols = c(value)`.|
 read_coux_data|function|d353bf02bee691a0
 download_data|function|0fe341fd0f16c0a0
-data_coux|stem|2807c6202c5a8f3a|32806837bb5bad42|6e481ed26cd65370|-879198766||t20567.6091425425s|s3138b|3138|rds|local|vector|||0.03||
-report_coux|stem|6b11344fb13358a5|9a3a6ed7969b3286|df89b6d00296b938|-1623220466|docs/reports/explore-coux2016.html*reports/explore-coux2016.qmd|t20567.6091935834s|s2199078b|2199078|file|local|vector|||4.442||
+get_interaction_matrix|function|e8b0a63002a1d619
+compute_network_metrics|function|fae7f556b40b0252
+report_coux|stem|c8d9d97ab6a3960c|c1c7594273592f96|266816655ff96b65|-1623220466|docs/reports/explore-coux2016.html*reports/explore-coux2016.qmd|t20575.3125746403s|s2202166b|2202166|file|local|vector|||9.429||

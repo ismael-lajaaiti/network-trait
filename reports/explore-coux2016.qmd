@@ -18,6 +18,7 @@ tar_config_set(
   store = here::here("_targets")
 )
 library(dplyr)
+library(bipartite)
 ```
 
 Let's begin by looking at the data.
@@ -55,6 +56,11 @@ And pollinator abundances.
 str(data$pollinator_abundance)
 ```
 
+We have coded a function to compute species level network metrics using the
+`bipartite::specieslevel` function.
 
-
+```{r}
+net_metrics <- tar_read(net_metrics)
+net_metrics
+```
 

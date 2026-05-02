@@ -33,5 +33,7 @@ list(
     quarto_args = c("--embed-resources")
   ),
   tar_target(data_coux_folder, "data/raw/coux2016/", format = "file"),
-  tar_target(data_coux, read_coux_data(data_coux_folder))
+  tar_target(data_coux, read_coux_data(data_coux_folder)),
+  tar_target(web_list, get_interaction_matrix(data_coux$interaction)),
+  tar_target(net_metrics, compute_network_metrics(web_list))
 )
