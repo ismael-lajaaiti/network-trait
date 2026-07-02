@@ -1,5 +1,5 @@
 rm(list=ls())
-source("Functions.R")
+source(here::here("R","Functions.R"))
 
 
 # -------------------- Soliveres data competition networks ----

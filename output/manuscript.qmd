@@ -1,5 +1,5 @@
 ---
-title: "Network and traits"
+title: "Bridging functional and network robustness"
 author: "Benoît Pichon, Ismaël Lajaaiti"
 bibliography: ../references.bib
 prefer-html: true
@@ -37,43 +37,53 @@ tar_config_set(
 )
 ```
 
-## Notes copied from typst document
+## The idea
 
-Three different ways to define robustness:
-- functional trait space
-- static network
-- dynamic secondary extinctions
+The role of a species in a community can be defined in three ways: where the
+species is in the functional space, where the species is in the ecological
+network, and what is the impact of the species loss. These are three lenses with
+which we can look at a species. They are usually used separately. Yet, they all
+are an attempt to capture the very same reality. So we argue that to improve our
+view on a species role in a community it is best to pile up these lenses than
+using them separately. They are complementary facets and understanding the
+relationships between these different view enable a more complete view of a role
+played by a species within a community.
 
-What are the relationships between these different facets of robustness. It
-makes sense to have a global view, in particular in plant-pollinator network,
-where traits govern species interactions.
+## The question
 
-- *Question 1:* What is the link between the functional/phylogenetic and network
-role of species in different systems? Does uniqueness and originality drive
-network species' roles?
-- *Question 2:* Is there a link between the contribution of species to the
-functional space and the possible secondary extinction their lead to? Ismaël:
-This question makes me think of Alice's work with Jeff. She studied functional
-contribution as a dynamic role of the species in the community. Maybe we could
-try to relate dynamical functional contribution to trait uniqueness/originality? 
+**To what degree do a species position in functional trait space, its structural
+position in the interaction network, and its contribution to community robustness
+converge or diverge? What does that tell us about community robustness?**
 
+## The axes
 
-Some steps that need to be done:
+### 1. From static correlation to mechanistic understanding
 
-- Read the papers and redefine the questions depending on exactly what has been
-done
+@Coux-etal-2016 established that functional originality correlates with network
+specialisation in pollinators. But the why remains underexplored. Traits govern
+which interactions are possible, such as morphological matching between flower
+and pollinators. So the trait–network relationship is not merely correlative but
+mechanistic. A promising direction is to move beyond summary axes (PCoA) and ask
+which specific traits drive which network metrics. Disentangling these
+trait-by-metric relationships would give the correlation a mechanistic
+foundation.
 
-- Think about some descriptors of species role in networks (degree, centrality
-measures, contribution to nestedness or modularity, ...XXX)
+### 2. Connecting functional position to extinction dynamics
 
-- Think about uniqueness and originality using functional traits, and when
-possible, phylogenetic data?
+A key question whether functional originality of the lost species
+determines the magnitude of that loss. If a species is functionally original and
+topologically central, does its removal trigger a disproportionate cascade? Or
+do these two dimensions predict different things?
 
-- Find good data to test that: Solieveres paper, other papers where there is the
-interaction network (plant-pollinator, so we extend that in foodwebs?),
-possibility to use Biodesert (this would include Nico Yoann and Fernando at
-least then)
-- Perform the analyses
+### 3. Generality across systems
+
+@Coux-etal-2016 worked exclusively with plant-pollinator networks, an extension
+is to test whether the same framework holds in other interaction types — food
+webs, seed dispersal networks — where the trait–interaction link operates
+differently. If the relationship between functional position and network role is
+general, it points to a universal principle of community organisation. If it is
+system-specific, that contrast itself becomes informative about how different
+ecological architectures buffer or amplify the consequences of species loss.
 
 ## Notes Ismaël
 

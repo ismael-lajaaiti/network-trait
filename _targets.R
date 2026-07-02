@@ -1,6 +1,7 @@
 library(targets)
 library(tarchetypes)
-lapply(list.files("R", full.names = TRUE), source)
+source(here::here("R", "analyse-coux.R"))
+source(here::here("R", "utils.R"))
 tar_option_set(
   packages = c(
     "ggplot2",
