@@ -2,15 +2,15 @@ name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iterat
 url|object|928dcf826a7f77ac
 doi|object|c0b1362d8062434f
 data_files|stem||839395c6e3007fae|76dfaa48c1110cfd|22696647||t20551.6610598073s||0|rds|local|vector|||0.568||zip error: Cannot open zip file `/home/ilajaaiti/snap/alacritty/common/.cache/R/rdryad/10_5061_dryad_dncjsxkw2.zip` for reading in file zip.c:144
-data_coux_folder|stem|5af7ad597f5e4b57|7c695062a22208a2|2c530c1562a7fbd1|1019364934|data/raw/coux2016/|t20567.58125s|s36814b|36814|file|local|vector|||0.334||
-index_main|stem|15027c80b532ef5e|13f87907903fb413|2c530c1562a7fbd1|-27787746|docs/index.html*index.qmd|t20567.5926972349s|s2189402b|2189402|file|local|vector|||1.758||
-index_reports|stem|cb41c9e26bbeca53|0cef4be58c9338c4|2c530c1562a7fbd1|-848029303|docs/reports/index.html*reports/index.qmd|t20567.5927185539s|s2188999b|2188999|file|local|vector|||1.811||
-data_coux|stem|2807c6202c5a8f3a|32806837bb5bad42|6e481ed26cd65370|-879198766||t20575.2787715695s|s3138b|3138|rds|local|vector|||0.344||
-web_list|stem|ca643ba8f70d0fb6|912766d81405e828|546da13768eb7be2|-1859957079||t20575.2936247088s|s1388b|1388|rds|local|vector|||0.416||
-net_metrics|stem|7956ce28a287ab3b|55a3131be01805a8|df26b9fad1dbdb18|-796231633||t20575.3105380898s|s11581b|11581|rds|local|vector|||2.466|Web contains too few nodes to compute closeness or betweenness!. Web contains too few nodes to compute closeness or betweenness!. `cols` is now required when using `unnest()`. ℹ Please use `cols = c(value)`.|
+data_coux|stem|0cc2cb69fafe6e10|32806837bb5bad42|6e481ed26cd65370|-879198766||t20637.3939730915s|s3138b|3138|rds|local|vector|||0.017||
+web_list|stem|3a444d76ddd042a7|912766d81405e828|415052ffaa80262a|-1859957079||t20637.3939737892s|s1388b|1388|rds|local|vector|||0.05||
+net_metrics|stem|9f5df677073295e1|55a3131be01805a8|66ab7f54b2129d32|-796231633||t20637.3939832452s|s11637b|11637|rds|local|vector|||0.811|Web contains too few nodes to compute closeness or betweenness!. Web contains too few nodes to compute closeness or betweenness!. `cols` is now required when using `unnest()`. ℹ Please use `cols = c(value)`.|
 read_coux_data|function|d353bf02bee691a0
 download_data|function|0fe341fd0f16c0a0
 get_interaction_matrix|function|e8b0a63002a1d619
 compute_network_metrics|function|fae7f556b40b0252
-manuscript|stem|79474e21f1194a52|9403ed582df997c9|2c530c1562a7fbd1|-1793997187|docs/output/manuscript.html*docs/output/manuscript.pdf*output/manuscript.qmd|t20636.6408349183s|s2236484b|2236484|file|local|vector|||15.472||
-report_coux|stem|03871048d9ac5a15|c1c7594273592f96|266816655ff96b65|-1623220466|docs/reports/explore-coux2016.html*reports/explore-coux2016.qmd|t20636.6409162365s|s2202165b|2202165|file|local|vector|||6.722||
+data_coux_folder|stem|5af7ad597f5e4b57|7c695062a22208a2|2c530c1562a7fbd1|1019364934|data/raw/coux2016/|t20637.2460229192s|s224b|224|file|local|vector|||0.334||
+manuscript|stem|7e3d3300296482c1|9403ed582df997c9|2c530c1562a7fbd1|-1793997187|docs/output/manuscript.html*docs/output/manuscript.pdf*output/manuscript.qmd|t20637.6885621155s|s5428444b|5428444|file|local|vector|||13.549||
+index_main|stem|759fb080fb945fce|13f87907903fb413|2c530c1562a7fbd1|-27787746|docs/index.html*index.qmd|t20637.688579426s|s2189402b|2189402|file|local|vector|||1.437||
+index_reports|stem|61e37c236edf92b0|0cef4be58c9338c4|2c530c1562a7fbd1|-848029303|docs/reports/index.html*reports/index.qmd|t20637.6885957129s|s2188999b|2188999|file|local|vector|||1.38||
+report_coux|stem|667af918341b2e95|c1c7594273592f96|e01f07dddbcac1bc|-1623220466|docs/reports/explore-coux2016.html*reports/explore-coux2016.qmd|t20637.58912508s|s2202165b|2202165|file|local|vector|||4.013||

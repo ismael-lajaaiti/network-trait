@@ -37,7 +37,9 @@ tar_config_set(
 )
 ```
 
-## The idea
+## Summary
+
+### The idea
 
 The role of a species in a community can be defined in three ways: where the
 species is in the functional space, where the species is in the ecological
@@ -49,15 +51,15 @@ using them separately. They are complementary facets and understanding the
 relationships between these different view enable a more complete view of a role
 played by a species within a community.
 
-## The question
+### The question
 
-**To what degree do a species position in functional trait space, its structural
+To what degree do a species position in functional trait space, its structural
 position in the interaction network, and its contribution to community robustness
-converge or diverge? What does that tell us about community robustness?**
+converge or diverge? What does that tell us about community robustness?
 
-## The axes
+### The axes
 
-### 1. From static correlation to mechanistic understanding
+#### 1. From static correlation to mechanistic understanding
 
 @Coux-etal-2016 established that functional originality correlates with network
 specialisation in pollinators. But the why remains underexplored. Traits govern
@@ -68,14 +70,14 @@ which specific traits drive which network metrics. Disentangling these
 trait-by-metric relationships would give the correlation a mechanistic
 foundation.
 
-### 2. Connecting functional position to extinction dynamics
+#### 2. Connecting functional position to extinction dynamics
 
 A key question whether functional originality of the lost species
 determines the magnitude of that loss. If a species is functionally original and
 topologically central, does its removal trigger a disproportionate cascade? Or
 do these two dimensions predict different things?
 
-### 3. Generality across systems
+#### 3. Generality across systems
 
 @Coux-etal-2016 worked exclusively with plant-pollinator networks, an extension
 is to test whether the same framework holds in other interaction types — food
@@ -85,12 +87,152 @@ general, it points to a universal principle of community organisation. If it is
 system-specific, that contrast itself becomes informative about how different
 ecological architectures buffer or amplify the consequences of species loss.
 
-## Notes Ismaël
+## Framework
 
-- @Coux-etal-2016:
-  - [Code](https://github.com/CamilleCoux/Ntw_FD_roles/tree/master) and 
-  [data](https://figshare.com/articles/dataset/Plant_pollinator_pollen_transportation_network_traits_and_pollinator_abundances_/3154078)
-  - **Originality**: distance to the community average
-  - **Uniqueness**: distance to the nearest neighbour
-  - PCoA is used to summarise traits, could investigate the role of each trait
-  individually in explaining species position in the network.
+### Conceptual overview
+
+We decompose the question of species robustness into three interconnected
+facets: functional trait space position, structural network role, and
+extinction dynamics. Our analysis links these facets at the species level
+across empirical plant–pollinator networks [@Coux-etal-2016].
+
+### Literature landscape
+
+```{mermaid}
+%%| label: fig-literature-landscape
+%%| fig-cap: "Literature landscape showing three research fields and their partial connections. Network ecology and functional diversity have been partially bridged through studies linking trait space position to network structure. Functional diversity and robustness connect through functional redundancy concepts. Network ecology and robustness link via structural importance measures. These three perspectives remain to be integrated all at the same time."
+
+flowchart TB
+    subgraph FD["<span style='color:#4caf50'>Functional diversity</span>"]
+        T1["Trait space position<br/>(originality, uniqueness)"]
+        T2["Functional redundancy<br/>& rarity"]
+    end
+
+    subgraph NE["<span style='color:#2196f3'>Network ecology</span>"]
+        N1["Network structure<br/>(degree, specialisation)"]
+        N2["Interaction niche"]
+    end
+
+    subgraph RB["<span style='color:#ff9800'>Robustness</span>"]
+        R1["Extinction dynamics"]
+        R2["Coextinction cascades"]
+    end
+
+    %% Partial bridges in the literature
+    T1 -.->|"Coux 2016"| N1
+    T2 -.->|"Violle 2017"| R1
+    N1 -.->|"Memmott 2004"| R2
+    T1 -.->|"Dehling 2018, 2022"| N2
+
+    %% Our integrated approach (solid lines)
+    T1 ==> N1
+    N1 ==> N2
+    T1 ==> R1
+    N2 ==> R1
+
+    classDef fdStyle fill:#e1f5dd,stroke:#4caf50,stroke-width:2px
+    classDef neStyle fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
+    classDef rbStyle fill:#fff3e0,stroke:#ff9800,stroke-width:2px
+
+    class T1,T2 fdStyle
+    class N1,N2 neStyle
+    class R1,R2 rbStyle
+
+    style FD fill:#f1f8f4,stroke:#4caf50,stroke-width:3px
+    style NE fill:#f0f7fc,stroke:#2196f3,stroke-width:3px
+    style RB fill:#fffaf5,stroke:#ff9800,stroke-width:3px
+```
+
+### Data and species descriptors
+
+From each network we extract three types of species-level descriptors.
+
+**Trait-space descriptors** (following @Coux-etal-2016; @Violle-etal-2017)
+summarise a species' position in its own functional trait space
+
+- *functional originality*, that is, the distance of species $i$ to the
+community centroid in PCoA trait space
+- *functional uniqueness*, that is, distance to the nearest neighbour in trait
+space
+
+**Network metrics** characterise structural embeddedness in the interaction
+network
+
+- *degree* $k_i$
+- *Blüthgen's* $d'_i$ [@Blüthgen-Menzel-Blüthgen-2006], that is, the deviation
+of interaction distribution from random given partner abundances
+
+**Interaction niche metrics** (following @Dehling-Stouffer-2018;
+@Dehling-Barreto-Graham-2022) characterise a species through the traits of its
+interaction partners
+
+- *interaction niche position*, that is, the centroid of species $i$ in partner
+trait space
+- *interaction niche size*, that is, the hypervolume spanned by interaction
+partners in trait space
+- *interaction niche originality*, that is, distance of species $i$'s
+interaction centroid from the community mean interaction centroid
+
+### Extinction simulation
+
+We simulate pollinator extinctions using both a topological coextinction model
+[@Memmott-Waser-Price-2004b] and a stochastic coextinction model
+[@Vieira-Almeida-Neto-2015], implemented via the `bipartite` package
+[@Dormann-Gruber-Fründ-2008] in R.
+
+For each species $i$ and each network, we compute three per-species extinction
+impact metrics
+
+$$\Delta R_i = R_{\text{full}} - R_{-i}$$
+
+where $R_{-i}$ is network robustness when species $i$ is removed first,
+
+$$\text{cascade}_i = \mathbb{E}[\text{secondary extinctions triggered by
+removal of } i]$$
+
+averaged over 1000 stochastic realisations, and
+
+$$\Delta \text{FD}_i = \text{FD}_{\text{full}} - \text{FD}_{-i}$$
+
+the loss of plant functional diversity following removal of $i$ and its
+downstream secondary extinctions.
+
+Simulations are run under three extinction sequences -- random,
+least-to-most-abundant, specialist-to-generalist -- to assess robustness of
+conclusions to sequence choice.
+
+### Causal structure and statistical model
+
+The predictors above are not causally independent. A species' own traits
+constrain which plants it can interact with (trait matching), which determines
+its network degree and specialisation, which in turn shapes its interaction
+niche size and modularity role. We therefore adopt a **structural equation
+modelling** which accounts for the causal structure.
+
+```{mermaid}
+flowchart TD
+  O[Position in the trait space] --> D[Embedding in the network]
+  D --> N[Interacting niche size]
+  N --> R[Contribution to robustness]
+  O --> R
+```
+
+The hypothesised causal graph contains four paths
+
+1. originality → degree [trait matching]
+2. degree → interaction niche size [bridging Eltonian niche and functional
+   diversity]
+3. interaction niche size → $\Delta R$
+4. originality → $\Delta R$ [functional redundancy]
+
+## Other ideas
+
+### Invasive species
+
+Link with invasive species. Invasive species may have a high trait uniqueness
+which make them able of taking a place that is not fulfilled in the pristine
+community. That is, can we link the position of the invasive species in the trait
+space to its probability to invade? In the same vein, can we also relate the
+position in the trait space of the invasive species to its impact on the
+community?
+
