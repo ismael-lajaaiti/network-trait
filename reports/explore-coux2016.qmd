@@ -1,8 +1,9 @@
 ---
 title: "Explore data of Coux et al. 2016"
-format: 
+format:
   html:
     embed-resources: true
+    code-fold: true
 execute:
     message: false
     warning: false
@@ -10,6 +11,8 @@ execute:
 
 ```{r}
 #| output: false
+#| echo: false
+
 library(renv)
 renv::load()
 library(targets)
@@ -17,44 +20,65 @@ library(here)
 tar_config_set(
   store = here::here("_targets")
 )
+source(here::here("R", "analyse-coux.R"))
 library(dplyr)
+library(tidyr)
+library(forcats)
+library(ggplot2)
+library(ggrepel)
 library(bipartite)
+
+guild_colors <- c(pollinator = "#2a78d6", plant = "#eb6834")
+theme_set(theme_minimal(base_size = 11))
 ```
 
-Let's begin by looking at the data.
+The data contains 5 different tables, that we can group in three categories:
 
-## Overview of the data
+1. plant-pollinator interaction list at each site
+2. plant and pollinator abundances (one table per guild)
+3. plant and pollinator traits (one table per guild)
 
-First, we have the interaction networks.
+We look at each of these categories in what follows.
+
+## Interactions
+
+Here is what the raw data looks like.
 
 ```{r}
 data <- tar_read(data_coux)
 head(data$interaction)
 ```
 
-We have plant traits.
-
 ```{r}
-str(data$plant_trait)
+#| echo: false
+n_sites <- n_distinct(data$interaction$site)
+n_pollinators <- n_distinct(data$interaction$pollinator)
+n_plants <- n_distinct(data$interaction$plant)
+prop_zero <- mean(data$interaction$links == 0)
 ```
 
-We have pollinator traits.
+The columns correspond to
 
-```{r}
-str(data$pollinator_trait)
-```
+- `site`: the community (`r n_sites` sites)
+- `pollinator`: the pollinator species (`r n_pollinators` species across all sites)
+- `plant`: the plant species (`r n_plants` species across all sites)
+- `links`: the number of interaction events (visits) observed between that
+  plant and that pollinator at that site (`r scales::percent(prop_zero)` show
+zero observed visits).
 
-As well as, plant abundances, which is only presence (1) absence (0).
+::: {.callout-note}
 
-```{r}
-str(data$plant_abundance)
-```
+`data_coux` is already cleaned by `clean_coux_data()`: species names are
+lowercased everywhere (pollinator names are capitalised and plant names
+inconsistently so in the raw data), and `alnus_glutinosa`/`alnus_serrulate` are
+merged into a single `alnus_sp`. The raw interaction table has `alnus_glutinosa`
+at site `blahamlak` with no matching trait/abundance row, and `alnus_serrulate`
+at `crobirlee`/`crostelee` joining fine. Since no site uses both names, we treat
+all three as the same plant recorded under two names. See `clean_coux_data()` in
+`R/analyse-coux.R` for details; use `tar_read(data_coux_raw)` to see the
+uncleaned version.
 
-And pollinator abundances.
-
-```{r}
-str(data$pollinator_abundance)
-```
+:::
 
 We have coded a function to compute species level network metrics using the
 `bipartite::specieslevel` function.
@@ -63,4 +87,299 @@ We have coded a function to compute species level network metrics using the
 net_metrics <- tar_read(net_metrics)
 net_metrics
 ```
+
+### Sites vary widely in size
+
+```{r}
+site_richness <- data$interaction |>
+  group_by(site) |>
+  summarise(
+    pollinator = n_distinct(pollinator),
+    plant = n_distinct(plant),
+    .groups = "drop"
+  ) |>
+  pivot_longer(
+    c(pollinator, plant),
+    names_to = "guild",
+    values_to = "n_species"
+  ) |>
+  mutate(site = fct_reorder(site, n_species, .fun = sum))
+
+ggplot(site_richness, aes(x = site, y = n_species, fill = guild)) +
+  geom_col(position = "dodge", width = 0.7) +
+  coord_flip() +
+  scale_fill_manual(values = guild_colors) +
+  labs(x = NULL, y = "Number of species", fill = NULL) +
+  theme(panel.grid.major.y = element_blank(), legend.position = "top")
+```
+
+Sites range from a few species to much richer communities. Network size itself
+is a potential confound to keep in mind in later analyses. We also note that
+plant and pollinator richness are strongly positively correlated.
+
+### Interaction matrices are sparse
+
+```{r}
+ggplot(data$interaction, aes(x = links)) +
+  geom_histogram(
+    binwidth = 1, fill = guild_colors[["pollinator"]],
+    color = "white", linewidth = 0.2
+  ) +
+  scale_y_continuous(trans = "sqrt") +
+  labs(
+    x = "Observed visits (links)", y = "Number of pairs (sqrt scale)"
+  )
+```
+
+### Degree distribution by guild
+
+```{r}
+ggplot(net_metrics, aes(x = guild, y = degree, fill = guild)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA) +
+  geom_jitter(width = 0.1, alpha = 0.4, size = 1) +
+  scale_fill_manual(values = guild_colors) +
+  labs(
+    x = NULL, y = "Degree (number of partners)"
+  ) +
+  theme(legend.position = "none")
+```
+
+### An example network
+
+The richest site, for a sense of what an actual interaction web looks like.
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6.5
+
+web_list <- tar_read(web_list)
+richest_site <- names(web_list)[which.max(vapply(web_list, sum, numeric(1)))]
+
+plotweb(
+  web_list[[richest_site]],
+  higher_color = guild_colors[["pollinator"]],
+  lower_color = guild_colors[["plant"]],
+  link_color = "grey80",
+  srt = 0,
+  text_size = 1
+)
+```
+
+## Abundances
+
+We have plant presence/absence per site — despite the name, this is
+binary (1/0), not a count.
+
+```{r}
+str(data$plant_abundance)
+```
+
+And pollinator abundances, which are actual counts.
+
+```{r}
+str(data$pollinator_abundance)
+```
+
+### Plant occurence is skewed
+
+```{r}
+n_sites_abundance <- n_distinct(data$plant_abundance$site)
+
+plant_occupancy <- data$plant_abundance |>
+  pivot_longer(-site, names_to = "plant", values_to = "present") |>
+  group_by(plant) |>
+  summarise(n_sites = sum(present), .groups = "drop") |>
+  mutate(plant = fct_reorder(plant, n_sites))
+
+ggplot(plant_occupancy, aes(x = plant, y = n_sites)) +
+  geom_col(fill = guild_colors[["plant"]], width = 0.7) +
+  coord_flip() +
+  labs(
+    x = NULL, y = paste0("Number of sites (out of ", n_sites_abundance, ")")
+  )
+```
+
+Most plant species are recorded at the majority of sites, unlike
+pollinators below, where a few generalists dominate and many species are
+site-specific.
+
+### Pollinator abundance is highly skewed
+
+```{r}
+pollinator_totals <- data$pollinator_abundance |>
+  pivot_longer(-site, names_to = "pollinator", values_to = "abundance") |>
+  group_by(pollinator) |>
+  summarise(total_abundance = sum(abundance), .groups = "drop") |>
+  mutate(pollinator = fct_reorder(pollinator, total_abundance))
+
+ggplot(pollinator_totals, aes(x = pollinator, y = total_abundance)) +
+  geom_col(fill = guild_colors[["pollinator"]], width = 0.7) +
+  coord_flip() +
+  scale_y_continuous(trans = "log1p", breaks = c(0, 10, 100, 1000, 10000)) +
+  labs(
+    x = NULL, y = "Total abundance across sites (log scale)"
+  )
+```
+
+## Traits
+
+We have plant traits: growth form, phenology, flower morphology and
+nectar reward (14 plants).
+
+```{r}
+str(data$plant_trait)
+```
+
+We have pollinator traits: body size, foraging preferences, sociality
+and larval diet (16 pollinators).
+
+```{r}
+str(data$pollinator_trait)
+```
+
+### Plant types and annual vs perennial
+
+```{r}
+ggplot(
+  data$plant_trait,
+  aes(x = fct_infreq(growth_form), fill = annual_perennial)
+) +
+  geom_bar() +
+  labs(
+    x = NULL, y = "Number of species", fill = NULL
+  )
+```
+
+### Most pollinators are small-bodied and solitary
+
+```{r}
+ggplot(data$pollinator_trait, aes(x = body_length, fill = soc_sol)) +
+  geom_histogram(binwidth = 2, color = "white", linewidth = 0.2) +
+  labs(
+    x = "Body length (mm)", y = "Number of species", fill = NULL
+  )
+```
+
+## Species similarity from traits
+
+We follow Coux et al. (2016)'s approach: traits are standardised and combined
+into a single dissimilarity via Gower's distance, then ordinated with PCoA.
+Binary traits that mark membership in one of several mutually-exclusive
+categories (flowering season for plants, larval diet for pollinators) are
+treated as *asymmetric* binary: two species that both lack a given season/diet
+are not counted as similar for that reason. Ordinal scores (e.g. floral
+fragrance, nectar amount) are treated as ordered factors rather than plain
+numbers or nominal categories. See `prepare_plant_traits()`,
+`prepare_pollinator_traits()` and `compute_trait_pcoa()` in `R/analyse-coux.R`
+for the exact variable typing.
+
+To see how each trait contributes to the two ordination axes, we fit every
+trait separately onto the PCoA scores with `vegan::envfit()` (see
+`fit_trait_ordination()` in `R/analyse-coux.R`) — this gives, per trait, an
+$R^2$ (how well that trait's variation aligns with the ordination) and a
+direction: a vector for numeric traits, or a centroid per level for
+categorical ones. Fitting traits one at a time, rather than all together,
+means a trait's missing values only cost that trait rows, not the whole
+analysis. Plotting helpers (`plot_trait_importance()`, `plot_trait_biplot()`)
+are also defined in `R/analyse-coux.R`.
+
+### Plant trait space
+
+```{r}
+plant_trait_ready <- tar_read(plant_trait_ready)
+plant_pcoa <- tar_read(plant_trait_pcoa)
+plant_pct <- round(plant_pcoa$values$Rel_corr_eig[1:2] * 100, 1)
+
+plant_pcoa_df <- as.data.frame(plant_pcoa$vectors[, 1:2])
+names(plant_pcoa_df) <- c("Axis1", "Axis2")
+plant_pcoa_df$plant <- rownames(plant_pcoa_df)
+plant_pcoa_df$growth_form <- plant_trait_ready$growth_form
+
+ggplot(plant_pcoa_df, aes(Axis1, Axis2, color = growth_form, label = plant)) +
+  geom_point(size = 2) +
+  geom_text_repel(size = 3, show.legend = FALSE) +
+  labs(
+    x = paste0("PCoA1 (", plant_pct[1], "%)"),
+    y = paste0("PCoA2 (", plant_pct[2], "%)"),
+    color = NULL
+  )
+```
+
+Trees cluster tightly together (large, single, actinomorphic
+inflorescences), while herbs are more spread out — reflecting a genuinely
+more variable growth strategy within that group.
+
+### Which traits drive the plant trait space
+
+```{r}
+plant_fit <- tar_read(plant_trait_fit)
+plot_trait_importance(plant_fit)
+```
+
+Flowering season (spring, winter), inflorescence type and growth form are
+the strongest, significant contributors; several ordinal scores
+(fragrance, nectar amount) sit just below the significance threshold.
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6.5
+
+plot_trait_biplot(plant_pcoa, plant_fit, guild_colors[["plant"]])
+```
+
+Season splits the space along a diagonal (spring/winter-flowering species
+vs. the rest), while growth form and inflorescence type separate species
+mostly along PCoA1 — consistent with the tree/herb split seen above.
+
+### Pollinator trait space
+
+```{r}
+pollinator_trait_ready <- tar_read(pollinator_trait_ready)
+pollinator_pcoa <- tar_read(pollinator_trait_pcoa)
+pollinator_pct <- round(pollinator_pcoa$values$Rel_corr_eig[1:2] * 100, 1)
+
+pollinator_pcoa_df <- as.data.frame(pollinator_pcoa$vectors[, 1:2])
+names(pollinator_pcoa_df) <- c("Axis1", "Axis2")
+pollinator_pcoa_df$pollinator <- rownames(pollinator_pcoa_df)
+pollinator_pcoa_df$soc_sol <- pollinator_trait_ready$soc_sol
+
+ggplot(
+  pollinator_pcoa_df,
+  aes(Axis1, Axis2, color = soc_sol, label = pollinator)
+) +
+  geom_point(size = 2) +
+  geom_text_repel(size = 3, show.legend = FALSE) +
+  labs(
+    x = paste0("PCoA1 (", pollinator_pct[1], "%)"),
+    y = paste0("PCoA2 (", pollinator_pct[2], "%)"),
+    color = NULL
+  )
+```
+
+The two social species (`a_mellifera`, `b_terrestris`) sit apart from all
+solitary species along PCoA1, which otherwise separates solitary species
+mostly by body size and larval diet.
+
+### Which traits drive the pollinator trait space
+
+```{r}
+pollinator_fit <- tar_read(pollinator_trait_fit)
+plot_trait_importance(pollinator_fit)
+```
+
+Larval diet (`larv_plant`, `larv_necpol`), body weight, carrying structure
+and sociality are the strongest, significant contributors — body length
+and time of day matter much less.
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6.5
+
+plot_trait_biplot(pollinator_pcoa, pollinator_fit, guild_colors[["pollinator"]])
+```
+
+The two social, corbiculate species (`a_mellifera`, `b_terrestris`) pull
+strongly towards `larv_necpol` and away from the rest; `larv_plant` and
+body weight define a second, largely independent direction among the
+solitary species.
 

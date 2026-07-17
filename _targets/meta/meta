@@ -1,16 +1,32 @@
 name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iteration|parent|children|seconds|warnings|error
-url|object|928dcf826a7f77ac
-doi|object|c0b1362d8062434f
+url|object|928dcf826a7f77ac|||||||||||||||
+doi|object|c0b1362d8062434f|||||||||||||||
 data_files|stem||839395c6e3007fae|76dfaa48c1110cfd|22696647||t20551.6610598073s||0|rds|local|vector|||0.568||zip error: Cannot open zip file `/home/ilajaaiti/snap/alacritty/common/.cache/R/rdryad/10_5061_dryad_dncjsxkw2.zip` for reading in file zip.c:144
-data_coux|stem|0cc2cb69fafe6e10|32806837bb5bad42|6e481ed26cd65370|-879198766||t20637.3939730915s|s3138b|3138|rds|local|vector|||0.017||
-web_list|stem|3a444d76ddd042a7|912766d81405e828|415052ffaa80262a|-1859957079||t20637.3939737892s|s1388b|1388|rds|local|vector|||0.05||
-net_metrics|stem|9f5df677073295e1|55a3131be01805a8|66ab7f54b2129d32|-796231633||t20637.3939832452s|s11637b|11637|rds|local|vector|||0.811|Web contains too few nodes to compute closeness or betweenness!. Web contains too few nodes to compute closeness or betweenness!. `cols` is now required when using `unnest()`. ℹ Please use `cols = c(value)`.|
-read_coux_data|function|d353bf02bee691a0
+data_coux|stem|03112bfe1e857a9d|9e0bfe11f912ee09|6872a31fd7d0f47e|-879198766||t20651.3606847324s|s3100b|3100|rds|local|vector|||0.025||
+web_list|stem|f8ff293202f25280|912766d81405e828|bf0377b0778114d5|-1859957079||t20651.3606873249s|s1354b|1354|rds|local|vector|||0.179||
+net_metrics|stem|7956ce28a287ab3b|55a3131be01805a8|ee580068bf1a0f3b|-796231633||t20651.3607116303s|s11581b|11581|rds|local|vector|||2.085|Web contains too few nodes to compute closeness or betweenness!. Web contains too few nodes to compute closeness or betweenness!. `cols` is now required when using `unnest()`. ℹ Please use `cols = c(value)`.|
+manuscript|stem|42e9fddc52e695a1|9403ed582df997c9|2c530c1562a7fbd1|-1793997187|docs/output/manuscript.html*docs/output/manuscript.pdf*output/manuscript.qmd|t20651.3734203566s|s12207813b|12207813|file|local|vector|||22.32||
+index_main|stem|0a5d399b8ea124c7|13f87907903fb413|2c530c1562a7fbd1|-27787746|docs/index.html*index.qmd|t20651.3734718374s|s9053960b|9053960|file|local|vector|||4.338||
+index_reports|stem|6c9ed075bd74a96a|0cef4be58c9338c4|2c530c1562a7fbd1|-848029303|docs/reports/index.html*reports/index.qmd|t20651.3735250543s|s8964611b|8964611|file|local|vector|||4.565||
+data_coux_raw|stem|2807c6202c5a8f3a|32806837bb5bad42|73cc840905600d01|176589894||t20651.3735304015s|s3138b|3138|rds|local|vector|||0.017||
+pollinator_trait_ready|stem|cb4947d0d2ddee6b|88c7438fafb99f6d|b96457086689f3fe|160961199||t20651.5566180965s|s802b|802|rds|local|vector|||0.005||
+plant_trait_ready|stem|69e28049820c206b|1eb629bd2185af95|893b47109038f5ae|-2121259250||t20651.5566183452s|s731b|731|rds|local|vector|||0.002||
+pollinator_trait_pcoa|stem|daf45a760c5c40ab|6c5689e3e19273cd|e7dbf71dbed6687b|1998491516||t20651.55662577s|s4254b|4254|rds|local|vector|||0.623||
+plant_trait_pcoa|stem|1e6bd370be97ba60|f012574667a2f303|c50aa616a1a26d9a|654132619||t20651.5566258984s|s3456b|3456|rds|local|vector|||0.003||
+pollinator_trait_fit|stem|05959edb15941922|772d9033201d8e24|c1b598845df72052|805858811||t20651.5730127273s|s2353b|2353|rds|local|vector|||1.005||
+plant_trait_fit|stem|aea420146409ecce|af586d2649851e6f|ecc25213b1b2623a|180246890||t20651.5730159983s|s2500b|2500|rds|local|vector|||0.26||
+prepare_pollinator_traits|function|28567996e620f98e
+read_coux_data|function|645eb78baa58a0e6
 download_data|function|0fe341fd0f16c0a0
+clean_coux_data|function|be6223f61b277f7a
+trait_biplot_data|function|b8ca49ee1794a3b8
+compute_trait_pcoa|function|ce7ee1bf09451330
+fit_trait_ordination|function|a0a9f0c38dd6c43f
+prepare_plant_traits|function|87e3799ff89153c9
 get_interaction_matrix|function|e8b0a63002a1d619
+trait_importance_table|function|5ec1b03bf779faa3
 compute_network_metrics|function|fae7f556b40b0252
-data_coux_folder|stem|5af7ad597f5e4b57|7c695062a22208a2|2c530c1562a7fbd1|1019364934|data/raw/coux2016/|t20637.2460229192s|s224b|224|file|local|vector|||0.334||
-manuscript|stem|7e3d3300296482c1|9403ed582df997c9|2c530c1562a7fbd1|-1793997187|docs/output/manuscript.html*docs/output/manuscript.pdf*output/manuscript.qmd|t20637.6885621155s|s5428444b|5428444|file|local|vector|||13.549||
-index_main|stem|759fb080fb945fce|13f87907903fb413|2c530c1562a7fbd1|-27787746|docs/index.html*index.qmd|t20637.688579426s|s2189402b|2189402|file|local|vector|||1.437||
-index_reports|stem|61e37c236edf92b0|0cef4be58c9338c4|2c530c1562a7fbd1|-848029303|docs/reports/index.html*reports/index.qmd|t20637.6885957129s|s2188999b|2188999|file|local|vector|||1.38||
-report_coux|stem|667af918341b2e95|c1c7594273592f96|e01f07dddbcac1bc|-1623220466|docs/reports/explore-coux2016.html*reports/explore-coux2016.qmd|t20637.58912508s|s2202165b|2202165|file|local|vector|||4.013||
+plot_trait_biplot|function|0d42cf6b59dbeded
+plot_trait_importance|function|088cd86fcc57bd1f
+data_coux_folder|stem|5af7ad597f5e4b57|7c695062a22208a2|2c530c1562a7fbd1|1019364934|data/raw/coux2016/|t20567.581767699s|s4096b|4096|file|local|vector|||0.334||
+report_coux|stem|0c1f5ca8e93a10f7|efe33d1c1921cdb9|6a6a4a028b88275f|-1623220466|docs/reports/explore-coux2016.html*reports/explore-coux2016.qmd|t20651.5953952546s|s10468331b|10468331|file|local|vector|||11.492||

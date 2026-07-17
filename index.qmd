@@ -30,7 +30,8 @@ foundation using extinction simulations and structural equation modelling.
 
 - [x] Acquire and format the plant–pollinator interaction data from
   [@Coux-etal-2016]
-- [ ] (in progress) Compute network structural metrics (degree, Blüthgen's $d'$)
+- [ ] **(in progress)** Clean and overview of Coux data
+- [ ] **(in progress)** Compute network structural metrics (degree, Blüthgen's $d'$)
   per species
 - [ ] Compute trait-space descriptors (functional originality, uniqueness)
 - [ ] Compute interaction niche metrics (position, size, originality)

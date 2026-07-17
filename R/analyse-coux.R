@@ -6,18 +6,66 @@
 #' @export
 read_coux_data <- function(dir) {
   data <- list() # Init.
-  data$interaction <- read.csv(here(dir, "interactions.csv")) |>
-    select(-X) |>
-    rename(site = Site, pollinator = Pol_sp, plant = Plant_sp, links = Links)
-  data$plant_trait <- read.csv(here(dir, "plant_traits.csv")) |>
-    rename(plant = X)
-  data$plant_abundance <- read.csv(here(dir, "plant_abundances_bin.csv")) |>
-    rename(site = X)
-  data$pollinator_trait <- read.csv(here(dir, "pollinator_traits.csv")) |>
-    rename(pollinator = X)
+  data$interaction <- read.csv(here::here(dir, "interactions.csv")) |>
+    dplyr::select(-X) |>
+    dplyr::rename(
+      site = Site, pollinator = Pol_sp, plant = Plant_sp, links = Links
+    )
+  data$plant_trait <- read.csv(here::here(dir, "plant_traits.csv")) |>
+    dplyr::rename(plant = X)
+  data$plant_abundance <- read.csv(
+    here::here(dir, "plant_abundances_bin.csv")
+  ) |>
+    dplyr::rename(site = X)
+  data$pollinator_trait <- read.csv(
+    here::here(dir, "pollinator_traits.csv")
+  ) |>
+    dplyr::rename(pollinator = X)
   data$pollinator_abundance <- read.csv(
-    here(dir, "pollinator_abundances.csv")
-  ) |> rename(site = Site)
+    here::here(dir, "pollinator_abundances.csv")
+  ) |> dplyr::rename(site = Site)
+  data
+}
+
+#' Clean species names in Coux et al. 2016 data.
+#'
+#' Lowercases plant and pollinator names throughout (pollinator names are
+#' capitalised in the raw data, plant names are inconsistently so), and
+#' reconciles `alnus_glutinosa`/`alnus_serrulate` into a single `alnus_sp`.
+#' `alnus_glutinosa` appears only at site `blahamlak`, with no matching
+#' trait/abundance row; `alnus_serrulate` appears at `crobirlee` and
+#' `crostelee` and joins fine there. No site uses both names, so we treat
+#' all three as the same plant recorded under two names rather than
+#' verifying species identity from the raw data.
+#'
+#' @param data list of data frames, as returned by `read_coux_data()`.
+#'
+#' @return the same list, with cleaned species names.
+#' @export
+clean_coux_data <- function(data) {
+  clean_name <- function(x) {
+    x <- tolower(x)
+    dplyr::recode_values(
+      x,
+      from = c("alnus_glutinosa", "alnus_serrulate"),
+      to = c("alnus_sp", "alnus_sp"),
+      default = x
+    )
+  }
+
+  data$interaction <- data$interaction |>
+    dplyr::mutate(
+      plant = clean_name(plant), pollinator = clean_name(pollinator)
+    )
+  data$plant_trait <- data$plant_trait |>
+    dplyr::mutate(plant = clean_name(plant))
+  data$pollinator_trait <- data$pollinator_trait |>
+    dplyr::mutate(pollinator = clean_name(pollinator))
+  data$plant_abundance <- data$plant_abundance |>
+    dplyr::rename_with(clean_name, .cols = -site)
+  data$pollinator_abundance <- data$pollinator_abundance |>
+    dplyr::rename_with(clean_name, .cols = -site)
+
   data
 }
 
@@ -56,4 +104,255 @@ compute_network_metrics <- function(web_list) {
     tibble::enframe() |>
     dplyr::rename(site = name) |>
     tidyr::unnest()
+}
+
+#' Type plant trait columns for Gower dissimilarity.
+#'
+#' Ordinal scores (flower count, fragrance, nectar amount) become ordered
+#' factors, single/multi-category traits become factors, and the four
+#' flowering-season columns are left as 0/1 integers to be passed as
+#' asymmetric binary traits to `gowdis()` (co-absence from a season is not
+#' evidence of similarity).
+#'
+#' @param plant_trait data frame as returned by `clean_coux_data()`.
+#'
+#' @return data frame of typed traits with `plant` as row names.
+#' @export
+prepare_plant_traits <- function(plant_trait) {
+  plant_trait |>
+    dplyr::mutate(
+      growth_form = factor(growth_form),
+      annual_perennial = factor(annual_perennial),
+      single_inflo = factor(single_inflo),
+      type_inflorescence = factor(type_inflorescence),
+      pollnec_access = factor(pollnec_access),
+      flowers_per_inflorescence = factor(
+        flowers_per_inflorescence,
+        ordered = TRUE
+      ),
+      flower_symmetry = factor(flower_symmetry),
+      inflorescence_symmetry = factor(inflorescence_symmetry),
+      flower_sex = factor(flower_sex),
+      floral_fragrance = factor(floral_fragrance, ordered = TRUE),
+      amount_of_nectar_per_poll_unit_per_day = factor(
+        amount_of_nectar_per_poll_unit_per_day,
+        ordered = TRUE
+      )
+    ) |>
+    tibble::column_to_rownames("plant")
+}
+
+#' Type pollinator trait columns for Gower dissimilarity.
+#'
+#' Body measurements and foraging preferences stay numeric; the six
+#' larval-diet columns are left as 0/1 integers to be passed as asymmetric
+#' binary traits to `gowdis()` (co-absence from a diet type is not evidence
+#' of similarity).
+#'
+#' @param pollinator_trait data frame as returned by `clean_coux_data()`.
+#'
+#' @return data frame of typed traits with `pollinator` as row names.
+#' @export
+prepare_pollinator_traits <- function(pollinator_trait) {
+  pollinator_trait |>
+    dplyr::mutate(
+      soc_sol = factor(soc_sol),
+      Carrying_structure = factor(Carrying_structure),
+      season = factor(season),
+      daily = factor(daily)
+    ) |>
+    tibble::column_to_rownames("pollinator")
+}
+
+#' Compute Gower dissimilarity and PCoA ordination among species traits.
+#'
+#' Follows Coux et al. (2016): traits are standardised (z-scores for
+#' numeric traits, range-standardisation for the rest) and combined via
+#' Gower's (1971) coefficient (`FD::gowdis`), then ordinated with PCoA
+#' (`ape::pcoa`), with a Cailliez correction for negative eigenvalues.
+#'
+#' @param trait_table data frame of traits, one row per species, typed by
+#'   `prepare_plant_traits()` or `prepare_pollinator_traits()`.
+#' @param asym.bin optional vector of column indices to treat as
+#'   asymmetric binary traits (see `FD::gowdis`).
+#'
+#' @return an `ape::pcoa` object.
+#' @export
+compute_trait_pcoa <- function(trait_table, asym.bin = NULL) {
+  dist <- FD::gowdis(trait_table, asym.bin = asym.bin)
+  ape::pcoa(dist, correction = "cailliez")
+}
+
+#' Fit each trait to a PCoA ordination, one trait at a time.
+#'
+#' Wraps `vegan::envfit()`, called separately for each trait column so
+#' that a trait's missing values only drop rows for that trait, instead of
+#' `envfit()`'s default of dropping any species missing *any* trait (which
+#' would needlessly shrink the sample for fully-observed traits). Gives,
+#' per trait, its direction (for numeric traits) or level centroids (for
+#' factors) plus an R^2 and permutation p-value for how well it fits the
+#' ordination.
+#'
+#' @param pcoa an `ape::pcoa` object, as returned by `compute_trait_pcoa()`.
+#' @param trait_table data frame of traits, one row per species matching
+#'   `pcoa`, typed by `prepare_plant_traits()` or
+#'   `prepare_pollinator_traits()`.
+#' @param permutations number of permutations used by `vegan::envfit()`.
+#' @param seed random seed, for reproducible permutation p-values.
+#'
+#' @return named list of `vegan::envfit` objects, one per trait column.
+#' @export
+fit_trait_ordination <- function(pcoa, trait_table, permutations = 999,
+                                  seed = 1) {
+  scores <- pcoa$vectors[, 1:2]
+  set.seed(seed)
+  fits <- lapply(names(trait_table), function(v) {
+    vegan::envfit(
+      scores, trait_table[, v, drop = FALSE],
+      permutations = permutations, na.rm = TRUE
+    )
+  })
+  names(fits) <- names(trait_table)
+  fits
+}
+
+#' Tidy a list of single-trait `envfit` fits into one row per trait.
+#'
+#' @param fits named list from `fit_trait_ordination()`.
+#'
+#' @return data frame with columns `trait`, `r2`, `pval`.
+#' @export
+trait_importance_table <- function(fits) {
+  rows <- lapply(names(fits), function(v) {
+    f <- fits[[v]]
+    if (!is.null(f$vectors)) {
+      data.frame(
+        trait = v, r2 = f$vectors$r, pval = f$vectors$pvals, row.names = NULL
+      )
+    } else {
+      data.frame(
+        trait = v, r2 = f$factors$r, pval = f$factors$pvals, row.names = NULL
+      )
+    }
+  })
+  do.call(rbind, rows)
+}
+
+#' Extract biplot-ready trait directions from a list of `envfit` fits.
+#'
+#' Numeric traits become arrows (direction scaled by fit strength);
+#' categorical traits become one centroid per level. Only traits
+#' significant at `alpha` are kept, to keep the biplot readable.
+#'
+#' @param fits named list from `fit_trait_ordination()`.
+#' @param alpha significance threshold on the permutation p-value.
+#'
+#' @return list with `arrows` and `centroids` data frames (`NULL` if no
+#'   trait of that type is significant).
+#' @export
+trait_biplot_data <- function(fits, alpha = 0.05) {
+  arrows <- lapply(names(fits), function(v) {
+    f <- fits[[v]]
+    if (is.null(f$vectors) || f$vectors$pvals > alpha) {
+      return(NULL)
+    }
+    coords <- f$vectors$arrows * sqrt(f$vectors$r)
+    data.frame(trait = v, Axis1 = coords[1], Axis2 = coords[2])
+  })
+  arrows <- do.call(rbind, arrows)
+
+  centroids <- lapply(names(fits), function(v) {
+    f <- fits[[v]]
+    if (is.null(f$factors) || f$factors$pvals > alpha) {
+      return(NULL)
+    }
+    cent <- as.data.frame(f$factors$centroids)
+    names(cent) <- c("Axis1", "Axis2")
+    cent$level <- sub(paste0("^", v), "", rownames(cent))
+    cent$variable <- v
+    cent
+  })
+  centroids <- do.call(rbind, centroids)
+
+  list(arrows = arrows, centroids = centroids)
+}
+
+#' Plot each trait's R^2 against a PCoA ordination, ranked.
+#'
+#' @param fits named list from `fit_trait_ordination()`.
+#'
+#' @return a ggplot object.
+#' @export
+plot_trait_importance <- function(fits) {
+  trait_importance_table(fits) |>
+    dplyr::mutate(trait = forcats::fct_reorder(trait, r2)) |>
+    ggplot2::ggplot(ggplot2::aes(x = trait, y = r2, fill = pval < 0.05)) +
+    ggplot2::geom_col(width = 0.6) +
+    ggplot2::coord_flip() +
+    ggplot2::scale_fill_manual(
+      values = c(`TRUE` = "#2a78d6", `FALSE` = "grey70"),
+      labels = c(`TRUE` = "p < 0.05", `FALSE` = "n.s."), name = NULL
+    ) +
+    ggplot2::labs(x = NULL, y = expression(R^2 ~ "(fit to PCoA1-2)"))
+}
+
+#' Biplot of a trait PCoA with significant trait directions overlaid.
+#'
+#' @param pcoa an `ape::pcoa` object, as returned by `compute_trait_pcoa()`.
+#' @param fits named list from `fit_trait_ordination()`, matching `pcoa`.
+#' @param arrow_color color used for numeric-trait arrows and their labels.
+#'
+#' @return a ggplot object.
+#' @export
+plot_trait_biplot <- function(pcoa, fits, arrow_color) {
+  pct <- round(pcoa$values$Rel_corr_eig[1:2] * 100, 1)
+  sp_df <- as.data.frame(pcoa$vectors[, 1:2])
+  names(sp_df) <- c("Axis1", "Axis2")
+
+  bp <- trait_biplot_data(fits)
+  if (!is.null(bp$arrows)) {
+    point_extent <- max(sqrt(sp_df$Axis1^2 + sp_df$Axis2^2))
+    arrow_extent <- max(sqrt(bp$arrows$Axis1^2 + bp$arrows$Axis2^2))
+    mul <- 0.9 * point_extent / arrow_extent
+    bp$arrows$Axis1 <- bp$arrows$Axis1 * mul
+    bp$arrows$Axis2 <- bp$arrows$Axis2 * mul
+  }
+
+  p <- ggplot2::ggplot() +
+    ggplot2::geom_point(
+      data = sp_df, ggplot2::aes(Axis1, Axis2), color = "grey75", size = 1.5
+    )
+
+  if (!is.null(bp$centroids)) {
+    p <- p +
+      ggplot2::geom_point(
+        data = bp$centroids, ggplot2::aes(Axis1, Axis2, color = variable),
+        size = 2, shape = 17
+      ) +
+      ggrepel::geom_text_repel(
+        data = bp$centroids,
+        ggplot2::aes(Axis1, Axis2, label = level, color = variable),
+        size = 3, show.legend = FALSE, seed = 1
+      )
+  }
+  if (!is.null(bp$arrows)) {
+    p <- p +
+      ggplot2::geom_segment(
+        data = bp$arrows,
+        ggplot2::aes(x = 0, y = 0, xend = Axis1, yend = Axis2),
+        arrow = ggplot2::arrow(length = ggplot2::unit(0.2, "cm")),
+        color = arrow_color
+      ) +
+      ggrepel::geom_text_repel(
+        data = bp$arrows, ggplot2::aes(Axis1, Axis2, label = trait),
+        color = arrow_color, size = 3, fontface = "italic", seed = 1
+      )
+  }
+  p +
+    ggplot2::labs(
+      x = paste0("PCoA1 (", pct[1], "%)"),
+      y = paste0("PCoA2 (", pct[2], "%)"),
+      color = NULL
+    ) +
+    ggplot2::coord_equal()
 }
