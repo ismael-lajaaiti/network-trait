@@ -8,7 +8,7 @@ project:
   output-dir: docs
 
 website:
-  title: "Network and Traits Project"
+  title: "Network & Trait"
   navbar: 
     left: 
       - text: Reports
@@ -21,4 +21,4 @@ website:
 format:
   html:
     toc: true
-    theme: cosmo
+    theme: [cosmo, brand]

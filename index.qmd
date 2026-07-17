@@ -1,11 +1,42 @@
 ---
 title: "Network and Traits Project"
 bibliography: references.bib
+toc: false
 ---
 
-This project focuses on the link between the originality of species traits and
-their place within the interaction networks.
-It is largely inspired by the work of [@Coux-etal-2016].
+## Overview
 
-We provide [reports](reports/index.qmd) detailing our analyses, and the
-associated [manuscript](output/manuscript.qmd)
+A species' role in a community can be read through three lenses: its position
+in functional trait space, its structural position in the interaction
+network, and its contribution to community robustness. These lenses are
+usually studied separately, yet they capture the same underlying reality.
+
+This project asks: **to what degree do a species' trait position, network
+position, and contribution to robustness converge or diverge — and what does
+that tell us about community robustness?** We build on the correlation
+between functional originality and network specialisation established by
+[@Coux-etal-2016], and aim to give it a mechanistic and predictive
+foundation using extinction simulations and structural equation modelling.
+
+## Contents
+
+- [Reports](reports/index.qmd) — exploratory analyses of the data
+- [Manuscript](output/manuscript.qmd) — full write-up of the idea, framework,
+  and results
+
+## Status
+
+**To do**
+
+- [x] Acquire and format the plant–pollinator interaction data from
+  [@Coux-etal-2016]
+- [ ] (in progress) Compute network structural metrics (degree, Blüthgen's $d'$)
+  per species
+- [ ] Compute trait-space descriptors (functional originality, uniqueness)
+- [ ] Compute interaction niche metrics (position, size, originality)
+- [ ] Run extinction simulations (topological and stochastic coextinction)
+- [ ] Fit the structural equation model linking trait position, network
+  embedding, interaction niche, and robustness
+- [ ] Extend the framework beyond plant-pollinator networks (food webs, seed
+  dispersal networks)
+- [ ] Explore the invasive species extension (optional)

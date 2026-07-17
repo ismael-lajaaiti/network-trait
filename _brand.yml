@@ -1,0 +1,20 @@
+meta:
+  name: Network and Traits Project
+
+color:
+  palette:
+    slate: "#3b4a5a"
+    burgundy: "#7a2e3b"
+    olive: "#7d8f4a"
+  primary: olive
+  secondary: slate
+  success: burgundy
+
+typography:
+  fonts:
+    - family: Atkinson Hyperlegible
+      source: google
+    - family: Libre Baskerville
+      source: google
+  base: Atkinson Hyperlegible
+  headings: Libre Baskerville
