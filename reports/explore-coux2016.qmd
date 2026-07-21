@@ -88,7 +88,7 @@ net_metrics <- tar_read(net_metrics)
 net_metrics
 ```
 
-### Sites vary widely in size
+### Site richness
 
 ```{r}
 site_richness <- data$interaction |>
@@ -117,7 +117,7 @@ Sites range from a few species to much richer communities. Network size itself
 is a potential confound to keep in mind in later analyses. We also note that
 plant and pollinator richness are strongly positively correlated.
 
-### Interaction matrices are sparse
+### Interaction matrices
 
 ```{r}
 ggplot(data$interaction, aes(x = links)) +
@@ -180,7 +180,7 @@ And pollinator abundances, which are actual counts.
 str(data$pollinator_abundance)
 ```
 
-### Plant occurence is skewed
+### Plant occurence
 
 ```{r}
 n_sites_abundance <- n_distinct(data$plant_abundance$site)
@@ -203,7 +203,7 @@ Most plant species are recorded at the majority of sites, unlike
 pollinators below, where a few generalists dominate and many species are
 site-specific.
 
-### Pollinator abundance is highly skewed
+### Pollinator abundance
 
 ```{r}
 pollinator_totals <- data$pollinator_abundance |>
@@ -263,25 +263,9 @@ ggplot(data$pollinator_trait, aes(x = body_length, fill = soc_sol)) +
 ## Species similarity from traits
 
 We follow Coux et al. (2016)'s approach: traits are standardised and combined
-into a single dissimilarity via Gower's distance, then ordinated with PCoA.
-Binary traits that mark membership in one of several mutually-exclusive
-categories (flowering season for plants, larval diet for pollinators) are
-treated as *asymmetric* binary: two species that both lack a given season/diet
-are not counted as similar for that reason. Ordinal scores (e.g. floral
-fragrance, nectar amount) are treated as ordered factors rather than plain
-numbers or nominal categories. See `prepare_plant_traits()`,
-`prepare_pollinator_traits()` and `compute_trait_pcoa()` in `R/analyse-coux.R`
-for the exact variable typing.
-
-To see how each trait contributes to the two ordination axes, we fit every
-trait separately onto the PCoA scores with `vegan::envfit()` (see
-`fit_trait_ordination()` in `R/analyse-coux.R`) — this gives, per trait, an
-$R^2$ (how well that trait's variation aligns with the ordination) and a
-direction: a vector for numeric traits, or a centroid per level for
-categorical ones. Fitting traits one at a time, rather than all together,
-means a trait's missing values only cost that trait rows, not the whole
-analysis. Plotting helpers (`plot_trait_importance()`, `plot_trait_biplot()`)
-are also defined in `R/analyse-coux.R`.
+into a single dissimilarity via Gower's distance, then ordinated with PCoA. To
+see how each trait contributes to the two ordination axes, we fit every trait
+separately onto the PCoA scores
 
 ### Plant trait space
 
@@ -305,9 +289,8 @@ ggplot(plant_pcoa_df, aes(Axis1, Axis2, color = growth_form, label = plant)) +
   )
 ```
 
-Trees cluster tightly together (large, single, actinomorphic
-inflorescences), while herbs are more spread out — reflecting a genuinely
-more variable growth strategy within that group.
+Trees cluster tightly together, while herbs are more spread out — reflecting
+probably a more variable growth strategy within that group.
 
 ### Which traits drive the plant trait space
 
@@ -315,10 +298,6 @@ more variable growth strategy within that group.
 plant_fit <- tar_read(plant_trait_fit)
 plot_trait_importance(plant_fit)
 ```
-
-Flowering season (spring, winter), inflorescence type and growth form are
-the strongest, significant contributors; several ordinal scores
-(fragrance, nectar amount) sit just below the significance threshold.
 
 ```{r}
 #| fig-width: 8
@@ -356,20 +335,12 @@ ggplot(
   )
 ```
 
-The two social species (`a_mellifera`, `b_terrestris`) sit apart from all
-solitary species along PCoA1, which otherwise separates solitary species
-mostly by body size and larval diet.
-
 ### Which traits drive the pollinator trait space
 
 ```{r}
 pollinator_fit <- tar_read(pollinator_trait_fit)
 plot_trait_importance(pollinator_fit)
 ```
-
-Larval diet (`larv_plant`, `larv_necpol`), body weight, carrying structure
-and sociality are the strongest, significant contributors — body length
-and time of day matter much less.
 
 ```{r}
 #| fig-width: 8
@@ -378,8 +349,17 @@ and time of day matter much less.
 plot_trait_biplot(pollinator_pcoa, pollinator_fit, guild_colors[["pollinator"]])
 ```
 
-The two social, corbiculate species (`a_mellifera`, `b_terrestris`) pull
-strongly towards `larv_necpol` and away from the rest; `larv_plant` and
-body weight define a second, largely independent direction among the
-solitary species.
+## Uniqueness and originality
+
+```{r}
+site_species_matrix <- data.matrix(data$plant_abundance)
+row.names(site_species_matrix) <- data$plant_abundance$site
+plant_trait <- tar_read(plant_trait_ready)
+distance_matrix <- data.matrix(FD::gowdis(plant_trait))
+unique <- funrar::uniqueness(
+  site_species_matrix,
+  distance_matrix
+)
+```
+
 
