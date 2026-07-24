@@ -40,14 +40,71 @@ The data contains 5 different tables, that we can group in three categories:
 
 We look at each of these categories in what follows.
 
-## Interactions
-
-Here is what the raw data looks like.
-
 ```{r}
 data <- tar_read(data_coux)
 head(data$interaction)
 ```
+
+## Abundances
+
+We have plant presence/absence per site — despite the name, this is
+binary (1/0), not a count.
+
+```{r}
+str(data$plant_abundance)
+```
+
+And pollinator abundances, which are actual counts.
+
+```{r}
+str(data$pollinator_abundance)
+```
+
+### Plant occurence
+
+```{r}
+n_sites_abundance <- n_distinct(data$plant_abundance$site)
+
+plant_occupancy <- data$plant_abundance |>
+  pivot_longer(-site, names_to = "plant", values_to = "present") |>
+  group_by(plant) |>
+  summarise(n_sites = sum(present), .groups = "drop") |>
+  mutate(plant = fct_reorder(plant, n_sites))
+
+ggplot(plant_occupancy, aes(x = plant, y = n_sites)) +
+  geom_col(fill = guild_colors[["plant"]], width = 0.7) +
+  coord_flip() +
+  labs(
+    x = NULL, y = paste0("Number of sites (out of ", n_sites_abundance, ")")
+  )
+```
+
+Most plant species are recorded at the majority of sites, unlike
+pollinators below, where a few generalists dominate and many species are
+site-specific.
+
+### Pollinator abundance
+
+```{r}
+pollinator_totals <- data$pollinator_abundance |>
+  pivot_longer(-site, names_to = "pollinator", values_to = "abundance") |>
+  group_by(pollinator) |>
+  summarise(total_abundance = sum(abundance), .groups = "drop") |>
+  mutate(pollinator = fct_reorder(pollinator, total_abundance))
+
+ggplot(pollinator_totals, aes(x = pollinator, y = total_abundance)) +
+  geom_col(fill = guild_colors[["pollinator"]], width = 0.7) +
+  coord_flip() +
+  scale_y_continuous(trans = "log1p", breaks = c(0, 10, 100, 1000, 10000)) +
+  labs(
+    x = NULL, y = "Total abundance across sites (log scale)"
+  )
+```
+
+## Interactions
+
+Here is what the raw data looks like.
+
 
 ```{r}
 #| echo: false
@@ -144,6 +201,87 @@ ggplot(net_metrics, aes(x = guild, y = degree, fill = guild)) +
   theme(legend.position = "none")
 ```
 
+### Degree per species
+
+As for uniqueness and originality above, each species has one degree value
+per site it occurs at, so we look at the per-species distribution across
+sites, ordered by median within each guild.
+
+```{r}
+degree_by_species <- net_metrics |>
+  mutate(species = fct_reorder(species, degree, .fun = median))
+
+ggplot(degree_by_species, aes(x = species, y = degree, fill = guild)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.1, alpha = 0.4, size = 1) +
+  scale_fill_manual(values = guild_colors) +
+  facet_wrap(~guild, scales = "free_y") +
+  coord_flip() +
+  labs(x = NULL, y = "Degree (number of partners)") +
+  theme(legend.position = "none")
+```
+
+### Normalised degree per species
+
+Raw degree is mechanically capped by how many species a site has at all, so
+we also look at normalised degree — degree scaled by the number of possible
+partners at that site — which partially controls for that site-richness
+confound.
+
+```{r}
+ndegree_by_species <- net_metrics |>
+  mutate(species = fct_reorder(species, normalised_degree, .fun = median))
+
+ggplot(ndegree_by_species, aes(x = species, y = normalised_degree, fill = guild)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.1, alpha = 0.4, size = 1) +
+  scale_fill_manual(values = guild_colors) +
+  facet_wrap(~guild, scales = "free_y") +
+  coord_flip() +
+  labs(x = NULL, y = "Normalised degree") +
+  theme(legend.position = "none")
+```
+
+### Specialisation (d′) per species
+
+Same, for Blüthgen's d′. d′ is `NA` for species in the three smallest
+networks (all of a species' partners are only ever visited by it, leaving
+the normalisation undefined), which `median()`/the boxplot silently drop.
+
+```{r}
+dprime_by_species <- net_metrics |>
+  mutate(species = fct_reorder(species, d_prime, .fun = median, na.rm = TRUE))
+
+ggplot(dprime_by_species, aes(x = species, y = d_prime, fill = guild)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.1, alpha = 0.4, size = 1) +
+  scale_fill_manual(values = guild_colors) +
+  facet_wrap(~guild, scales = "free_y") +
+  coord_flip() +
+  labs(x = NULL, y = "Specialisation (Blüthgen's d′)") +
+  theme(legend.position = "none")
+```
+
+### Generality (HS) per species
+
+HS is the raw Shannon entropy of a species' interaction distribution — how
+evenly it spreads its visits across its partners — without correcting for
+partner frequency, unlike d′.
+
+```{r}
+hs_by_species <- net_metrics |>
+  mutate(species = fct_reorder(species, hs, .fun = median))
+
+ggplot(hs_by_species, aes(x = species, y = hs, fill = guild)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.1, alpha = 0.4, size = 1) +
+  scale_fill_manual(values = guild_colors) +
+  facet_wrap(~guild, scales = "free_y") +
+  coord_flip() +
+  labs(x = NULL, y = "Generality (Shannon entropy, HS)") +
+  theme(legend.position = "none")
+```
+
 ### An example network
 
 The richest site, for a sense of what an actual interaction web looks like.
@@ -165,61 +303,6 @@ plotweb(
 )
 ```
 
-## Abundances
-
-We have plant presence/absence per site — despite the name, this is
-binary (1/0), not a count.
-
-```{r}
-str(data$plant_abundance)
-```
-
-And pollinator abundances, which are actual counts.
-
-```{r}
-str(data$pollinator_abundance)
-```
-
-### Plant occurence
-
-```{r}
-n_sites_abundance <- n_distinct(data$plant_abundance$site)
-
-plant_occupancy <- data$plant_abundance |>
-  pivot_longer(-site, names_to = "plant", values_to = "present") |>
-  group_by(plant) |>
-  summarise(n_sites = sum(present), .groups = "drop") |>
-  mutate(plant = fct_reorder(plant, n_sites))
-
-ggplot(plant_occupancy, aes(x = plant, y = n_sites)) +
-  geom_col(fill = guild_colors[["plant"]], width = 0.7) +
-  coord_flip() +
-  labs(
-    x = NULL, y = paste0("Number of sites (out of ", n_sites_abundance, ")")
-  )
-```
-
-Most plant species are recorded at the majority of sites, unlike
-pollinators below, where a few generalists dominate and many species are
-site-specific.
-
-### Pollinator abundance
-
-```{r}
-pollinator_totals <- data$pollinator_abundance |>
-  pivot_longer(-site, names_to = "pollinator", values_to = "abundance") |>
-  group_by(pollinator) |>
-  summarise(total_abundance = sum(abundance), .groups = "drop") |>
-  mutate(pollinator = fct_reorder(pollinator, total_abundance))
-
-ggplot(pollinator_totals, aes(x = pollinator, y = total_abundance)) +
-  geom_col(fill = guild_colors[["pollinator"]], width = 0.7) +
-  coord_flip() +
-  scale_y_continuous(trans = "log1p", breaks = c(0, 10, 100, 1000, 10000)) +
-  labs(
-    x = NULL, y = "Total abundance across sites (log scale)"
-  )
-```
 
 ## Trait overview
 
@@ -507,11 +590,74 @@ originality_uniqueness <- rbind(
 )
 
 ggplot(
-  originality_uniqueness, 
+  originality_uniqueness,
   aes(x = uniqueness, y = originality, color = guild)
 ) +
   geom_point() +
   labs(x = "Uniqueness", y = "Originality", color = "Guild")
+```
+
+
+```{r}
+head(tar_read(net_metrics))
+```
+
+## Interaction niche
+
+Following Dehling & Stouffer (2018) and Dehling et al. (2022), a species'
+interaction niche describes it through the traits of its interaction
+partners rather than its own traits: its *position* is the (link-weighted)
+centroid of its partners' traits in the partner guild's trait space, its
+*size* is how dispersed those partners are around that centroid, and its
+*originality* is how far that centroid sits from the average position of
+its guild-mates at the same site.
+
+We use dispersion rather than a hull/hypervolume for niche size: partner
+counts here are low (median degree 1-2.5 per the degree distributions
+above), too low for a hull-based volume to be defined for most species,
+whereas a dispersion-based measure degrades gracefully — a species with a
+single partner simply gets a niche size of 0.
+
+### Niche size
+
+```{r}
+plant_interaction_niche <- tar_read(plant_interaction_niche)
+pollinator_interaction_niche <- tar_read(pollinator_interaction_niche)
+all_interaction_niche <- rbind(
+  plant_interaction_niche |> mutate(guild = "plant"),
+  pollinator_interaction_niche |> mutate(guild = "pollinator")
+)
+
+niche_size_by_species <- all_interaction_niche |>
+  mutate(species = fct_reorder(species, niche_size, .fun = median))
+
+ggplot(niche_size_by_species, aes(x = species, y = niche_size, fill = guild)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.1, alpha = 0.4, size = 1) +
+  scale_fill_manual(values = guild_colors) +
+  facet_wrap(~guild, scales = "free_y") +
+  coord_flip() +
+  labs(x = NULL, y = "Interaction niche size") +
+  theme(legend.position = "none")
+```
+
+### Niche originality
+
+```{r}
+niche_originality_by_species <- all_interaction_niche |>
+  mutate(species = fct_reorder(species, niche_originality, .fun = median))
+
+ggplot(
+  niche_originality_by_species,
+  aes(x = species, y = niche_originality, fill = guild)
+) +
+  geom_boxplot(width = 0.5, outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.1, alpha = 0.4, size = 1) +
+  scale_fill_manual(values = guild_colors) +
+  facet_wrap(~guild, scales = "free_y") +
+  coord_flip() +
+  labs(x = NULL, y = "Interaction niche originality") +
+  theme(legend.position = "none")
 ```
 
 

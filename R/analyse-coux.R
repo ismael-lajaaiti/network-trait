@@ -93,17 +93,50 @@ get_interaction_matrix <- function(interaction_table) {
   web_list
 }
 
+#' Compute per-species network metrics
+#'
+#' Kept to four metrics, following Coux et al. (2016)'s supplementary
+#' analysis: `degree` (number of partners) and `normalised_degree` (degree
+#' scaled by the number of possible partners at that site, partially
+#' correcting for the site-richness confound noted elsewhere in this
+#' report) for structural embeddedness; Blüthgen's `d_prime`
+#' (null-model-corrected specialisation, deviation of a species'
+#' interaction distribution from random given partner interaction
+#' frequency) and `hs` (raw Shannon entropy of a species' interaction
+#' distribution, uncorrected for partner frequency -- `bipartite`'s
+#' "partner diversity") for specialisation/generality. Other
+#' `bipartite::specieslevel()` indices are dropped: centrality measures
+#' (betweenness, closeness) are unreliable on many of these networks ("too
+#' few nodes" on several sites), and the other specialisation indices
+#' (PDI, species specificity, resource range) are, unlike `d'`, not
+#' corrected for partner frequency.
+#'
+#' @param web_list named list of interaction matrices, as returned by
+#'   `get_interaction_matrix()`.
+#'
+#' @return data tibble of `degree`, `normalised_degree`, `d_prime` and
+#'   `hs` per species and site.
+#' @export
 compute_network_metrics <- function(web_list) {
   lapply(web_list, function(web) {
-    metrics <- web |> bipartite::specieslevel()
+    metrics <- web |> bipartite::specieslevel(
+      index = c("degree", "normalised degree", "d", "partner diversity")
+    )
     rbind(
-      metrics[[1]] |> dplyr::mutate(guild = "pollinator"),
-      metrics[[2]] |> dplyr::mutate(guild = "plant")
+      metrics[[1]] |>
+        tibble::rownames_to_column("species") |>
+        dplyr::mutate(guild = "pollinator"),
+      metrics[[2]] |>
+        tibble::rownames_to_column("species") |>
+        dplyr::mutate(guild = "plant")
     )
   }) |>
     tibble::enframe() |>
     dplyr::rename(site = name) |>
-    tidyr::unnest()
+    tidyr::unnest(value) |>
+    dplyr::rename(
+      normalised_degree = normalised.degree, d_prime = d, hs = partner.diversity
+    )
 }
 
 #' Type plant trait columns for Gower dissimilarity.
@@ -417,7 +450,8 @@ compute_originality <- function(pcoa, presence, weighted = FALSE) {
 
   presence_long |>
     dplyr::inner_join(
-      coords, by = "species", relationship = "many-to-many"
+      coords,
+      by = "species", relationship = "many-to-many"
     ) |>
     dplyr::group_by(site, axis) |>
     dplyr::mutate(centroid = weighted.mean(value, w = present)) |>
@@ -425,4 +459,88 @@ compute_originality <- function(pcoa, presence, weighted = FALSE) {
     dplyr::summarise(
       originality = sqrt(sum((value - centroid)^2)), .groups = "drop"
     )
+}
+
+#' Compute interaction niche size and originality per species and site
+#'
+#' Following Dehling & Stouffer (2018) and Dehling et al. (2022): a
+#' species' interaction niche position is the link-weighted centroid of
+#' its partners' traits in the *partner* guild's Cailliez-corrected PCoA
+#' space. From that position we
+#' compute:
+#' - niche size: the link-weighted dispersion of a species' partners
+#'   around their own centroid (Laliberte & Legendre 2010-style, as in
+#'   `compute_originality()`, rather than a hypervolume; a species with a
+#'   single partner has a niche size of 0.
+#' - niche originality: the distance of a species' niche position from
+#'   the (unweighted) mean niche position across the same guild at that
+#'   site.
+#'
+#' @param web_list named list of interaction matrices, plants as rows and
+#'   pollinators as columns, as returned by `get_interaction_matrix()`.
+#' @param partner_pcoa an `ape::pcoa` object (with a Cailliez correction,
+#'   so that `vectors.cor` is available) for the *partner* guild's
+#'   traits, e.g. `plant_trait_pcoa` to compute pollinator niches.
+#' @param level `"higher"` to compute niches for pollinators (web
+#'   columns) against plant trait space, or `"lower"` for plants (web
+#'   rows) against pollinator trait space.
+#'
+#' @return data tibble of `niche_size` and `niche_originality` per
+#'   species and site.
+#' @export
+compute_interaction_niche <- function(web_list, partner_pcoa,
+                                      level = c("higher", "lower")) {
+  level <- match.arg(level)
+
+  coords <- partner_pcoa$vectors.cor |>
+    tibble::as_tibble(rownames = "partner") |>
+    tidyr::pivot_longer(-partner, names_to = "axis", values_to = "value")
+
+  links <- lapply(web_list, function(web) {
+    web <- if (level == "higher") t(web) else web
+    as.data.frame(web) |>
+      tibble::rownames_to_column("species") |>
+      tidyr::pivot_longer(
+        -species,
+        names_to = "partner",
+        values_to = "n_links"
+      ) |>
+      dplyr::filter(n_links > 0)
+  }) |>
+    dplyr::bind_rows(.id = "site")
+
+  position <- links |>
+    dplyr::inner_join(
+      coords,
+      by = "partner", relationship = "many-to-many"
+    ) |>
+    dplyr::group_by(site, species, axis) |>
+    dplyr::mutate(centroid = weighted.mean(value, w = n_links)) |>
+    dplyr::ungroup()
+
+  niche_position <- position |>
+    dplyr::distinct(site, species, axis, centroid)
+
+  niche_size <- position |>
+    dplyr::group_by(site, species, partner) |>
+    dplyr::summarise(
+      n_links = dplyr::first(n_links),
+      partner_dist_sq = sum((value - centroid)^2),
+      .groups = "drop_last"
+    ) |>
+    dplyr::group_by(site, species) |>
+    dplyr::summarise(
+      niche_size = weighted.mean(partner_dist_sq, w = n_links), .groups = "drop"
+    )
+
+  niche_originality <- niche_position |>
+    dplyr::group_by(site, axis) |>
+    dplyr::mutate(guild_centroid = mean(centroid)) |>
+    dplyr::group_by(site, species) |>
+    dplyr::summarise(
+      niche_originality = sqrt(sum((centroid - guild_centroid)^2)),
+      .groups = "drop"
+    )
+
+  dplyr::inner_join(niche_size, niche_originality, by = c("site", "species"))
 }

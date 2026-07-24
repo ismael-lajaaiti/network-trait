@@ -28,13 +28,26 @@ foundation using extinction simulations and structural equation modelling.
   [@Coux-etal-2016]
 - [x] Clean and overview of Coux data
 - [x] Compute trait-space descriptors (functional originality, uniqueness)
-- [ ] **(in progress)** Compute network structural metrics (degree, Blüthgen's $d'$)
-  per species
-- [ ] Compute interaction niche metrics (position, size, originality)
+- [x] Compute network structural metrics (degree, Blüthgen's $d'$) per species
+- [x] Compute interaction niche metrics (position, size, originality)
 - [ ] Run extinction simulations (topological and stochastic coextinction)
 - [ ] Fit the structural equation model linking trait position, network
   embedding, interaction niche, and robustness
+- [ ] Check whether niche size/originality predict ΔFD, or need a
+  redundancy term instead
 - [ ] *(side)* distance in trait space vs distance in network space
+
+### Draft SEM structure
+
+```{mermaid}
+flowchart TD
+  OU[Originality / uniqueness] --> ND[Normalised degree]
+  ND --> NS[Interaction niche size]
+  ND --> NO[Interaction niche originality]
+  NS --> FR[Functional robustness contribution]
+  NO --> FR
+  ND --> TR[Topological robustness contribution]
+```
 
 ## Project maintenance
 

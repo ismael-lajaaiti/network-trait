@@ -93,5 +93,13 @@ list(
       pollinator_trait_pcoa, data_coux$pollinator_abundance,
       weighted = TRUE
     )
+  ),
+  tar_target(
+    pollinator_interaction_niche,
+    compute_interaction_niche(web_list, plant_trait_pcoa, level = "higher")
+  ),
+  tar_target(
+    plant_interaction_niche,
+    compute_interaction_niche(web_list, pollinator_trait_pcoa, level = "lower")
   )
 )

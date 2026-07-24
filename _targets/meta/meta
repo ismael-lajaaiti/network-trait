@@ -11,7 +11,6 @@ plant_trait_ready|stem|69e28049820c206b|1eb629bd2185af95|893b47109038f5ae|-21212
 web_list|stem|f8ff293202f25280|912766d81405e828|bf0377b0778114d5|-1859957079||t20658.3405709541s|s1354b|1354|rds|local|vector|||0.078||
 pollinator_trait_pcoa|stem|daf45a760c5c40ab|6c5689e3e19273cd|e7dbf71dbed6687b|1998491516||t20658.3405786635s|s4254b|4254|rds|local|vector|||0.658||
 plant_trait_pcoa|stem|1e6bd370be97ba60|f012574667a2f303|c50aa616a1a26d9a|654132619||t20658.3405788018s|s3456b|3456|rds|local|vector|||0.004||
-net_metrics|stem|7956ce28a287ab3b|55a3131be01805a8|ee580068bf1a0f3b|-796231633||t20658.3405858499s|s11581b|11581|rds|local|vector|||0.602|Web contains too few nodes to compute closeness or betweenness!. Web contains too few nodes to compute closeness or betweenness!. `cols` is now required when using `unnest()`. ℹ Please use `cols = c(value)`.|
 pollinator_trait_fit|stem|05959edb15941922|772d9033201d8e24|c1b598845df72052|805858811||t20658.34059041s|s2353b|2353|rds|local|vector|||0.381||
 plant_trait_fit|stem|aea420146409ecce|af586d2649851e6f|ecc25213b1b2623a|180246890||t20658.3405931531s|s2500b|2500|rds|local|vector|||0.229||
 pollinator_uniquess|stem|9811635572362b7b|f591a5b2e3168903|bc280708aa7b21ba|1063185966||t20658.3661587447s|s918b|918|rds|local|vector|||0.737||
@@ -19,11 +18,15 @@ plant_uniquess|stem|2ba11a643a5ee1ab|2e8945d14a61ce87|a9df2366e4428075|123846131
 pollinator_uniqueness|stem|9811635572362b7b|f591a5b2e3168903|bc280708aa7b21ba|1332873196||t20658.367026741s|s918b|918|rds|local|vector|||0.896||
 plant_uniqueness|stem|2ba11a643a5ee1ab|2e8945d14a61ce87|a9df2366e4428075|-1776384692||t20658.3670276683s|s833b|833|rds|local|vector|||0.032||
 pollinator_originality_weighted|stem|0f3abb2eb7d61241|68eecc3b8bbfc1c4|072492e96b85d0d7|-405723925||t20658.4334131804s|s1355b|1355|rds|local|vector|||0.031||
-.Random.seed|object|173d85eee035c196
 pollinator_originality|stem|d3c6fe46e53c5093|d7c759ccf712d57b|072492e96b85d0d7|1599206744||t20658.4346951599s|s1291b|1291|rds|local|vector|||0.03||
 plant_originality|stem|56862f172dfb4718|9b436d83fd75d780|4eff77f2fbd99402|-1969038517||t20658.4346954891s|s1711b|1711|rds|local|vector|||0.011||
 pol_originality_weighted|stem|0f3abb2eb7d61241|68eecc3b8bbfc1c4|072492e96b85d0d7|-309730932||t20658.4660868598s|s1355b|1355|rds|local|vector|||0.032||
 pollinator_originality_w|stem|0f3abb2eb7d61241|68eecc3b8bbfc1c4|072492e96b85d0d7|-1511689034||t20658.4724815474s|s1355b|1355|rds|local|vector|||0.032||
+net_metrics|stem|48f9a20f1d082d66|55a3131be01805a8|c11b741bf0aac53d|-796231633||t20658.5317846998s|s3225b|3225|rds|local|vector|||0.825||
+plant_interaction_niche|stem|ddc3bafed7d3e8c3|9c63d14b9215bd18|4f7e4c215d193937|-1352724303||t20658.564106412s|s2031b|2031|rds|local|vector|||0.109||
+pollinator_interaction_niche|stem|315409b43bc9c395|3fc2ca8f96ff3ad1|9f06562f93d797b9|-252178440||t20658.5641074731s|s1780b|1780|rds|local|vector|||0.073||
+.Random.seed|object|2ac93f83657911c7
+report_coux|stem|8d1887f36ce33fb6|9de21f8e13f7d3d9|d7e137afd6510de5|-1623220466|docs/reports/explore-coux2016.html*reports/explore-coux2016.qmd|t20658.5678055711s|s12541887b|12541887|file|local|vector|||32.912||
 prepare_pollinator_traits|function|28567996e620f98e
 read_coux_data|function|645eb78baa58a0e6
 compute_uniqueness|function|878ce7bbdc6bff4c
@@ -33,12 +36,12 @@ clean_coux_data|function|be6223f61b277f7a
 trait_biplot_data|function|b8ca49ee1794a3b8
 compute_trait_pcoa|function|ce7ee1bf09451330
 fit_trait_ordination|function|a0a9f0c38dd6c43f
+compute_interaction_niche|function|6294755c1fbbce06
 prepare_plant_traits|function|87e3799ff89153c9
 get_interaction_matrix|function|e8b0a63002a1d619
 trait_importance_table|function|5ec1b03bf779faa3
-compute_network_metrics|function|fae7f556b40b0252
+compute_network_metrics|function|7713903cd813875b
 plot_trait_biplot|function|0d42cf6b59dbeded
 plot_trait_importance|function|088cd86fcc57bd1f
-index_main|stem|6b3694eff49f645b|13f87907903fb413|2c530c1562a7fbd1|-27787746|docs/index.html*index.qmd|t20658.49021134s|s9054612b|9054612|file|local|vector|||6.114||
+index_main|stem|c4b2bf8e74024bfa|13f87907903fb413|2c530c1562a7fbd1|-27787746|docs/index.html*index.qmd|t20658.6030831022s|s11819177b|11819177|file|local|vector|||5.35||
 data_coux_folder|stem|5af7ad597f5e4b57|7c695062a22208a2|2c530c1562a7fbd1|1019364934|data/raw/coux2016/|t20567.581767699s|s4096b|4096|file|local|vector|||0.334||
-report_coux|stem|f47a57d0d7ec3323|f18dd1a3866b0d1d|f54a3b766c081c95|-1623220466|docs/reports/explore-coux2016.html*reports/explore-coux2016.qmd|t20658.4904256544s|s11299580b|11299580|file|local|vector|||18.251||
