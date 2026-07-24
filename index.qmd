@@ -4,8 +4,6 @@ bibliography: references.bib
 toc: false
 ---
 
-## Overview
-
 A species' role in a community can be read through three lenses: its position
 in functional trait space, its structural position in the interaction
 network, and its contribution to community robustness. These lenses are
@@ -24,9 +22,7 @@ foundation using extinction simulations and structural equation modelling.
 - [Manuscript](output/manuscript.qmd) — full write-up of the idea, framework,
   and results
 
-## Status
-
-**To do**
+## Task list
 
 - [x] Acquire and format the plant–pollinator interaction data from
   [@Coux-etal-2016]
@@ -36,10 +32,17 @@ foundation using extinction simulations and structural equation modelling.
 - [ ] **(in progress)** Compute trait-space descriptors (functional
 originality, uniqueness)
 - [ ] Compute interaction niche metrics (position, size, originality)
-- [ ] *(side)* distance in trait space vs distance in network space
 - [ ] Run extinction simulations (topological and stochastic coextinction)
 - [ ] Fit the structural equation model linking trait position, network
   embedding, interaction niche, and robustness
+- [ ] *(side)* distance in trait space vs distance in network space
+
+## Project maintenance
+
+- [ ] Write README
+
+## Exploration ideas
+
 - [ ] Extend the framework beyond plant-pollinator networks (food webs, seed
   dispersal networks)
 - [ ] Explore the invasive species extension (optional)

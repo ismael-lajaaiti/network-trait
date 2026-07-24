@@ -103,5 +103,26 @@
     "title": "Explore data of Coux et al. 2016",
     "section": "Uniqueness and originality",
     "text": "Uniqueness and originality\n\n\nCode\nsite_species_matrix &lt;- data.matrix(data$plant_abundance)\nrow.names(site_species_matrix) &lt;- data$plant_abundance$site\nplant_trait &lt;- tar_read(plant_trait_ready)\ndistance_matrix &lt;- data.matrix(FD::gowdis(plant_trait))\nunique &lt;- funrar::uniqueness(\n  site_species_matrix,\n  distance_matrix\n)"
+  },
+  {
+    "objectID": "index.html#task-list",
+    "href": "index.html#task-list",
+    "title": "Network and Traits Project",
+    "section": "Task list",
+    "text": "Task list\n\nAcquire and format the plant–pollinator interaction data from (Coux et al. 2016)\nClean and overview of Coux data\n(in progress) Compute network structural metrics (degree, Blüthgen’s \\(d'\\)) per species\n(in progress) Compute trait-space descriptors (functional originality, uniqueness)\nCompute interaction niche metrics (position, size, originality)\nRun extinction simulations (topological and stochastic coextinction)\nFit the structural equation model linking trait position, network embedding, interaction niche, and robustness\n(side) distance in trait space vs distance in network space"
+  },
+  {
+    "objectID": "index.html#project-maintenance",
+    "href": "index.html#project-maintenance",
+    "title": "Network and Traits Project",
+    "section": "Project maintenance",
+    "text": "Project maintenance\n\nWrite README"
+  },
+  {
+    "objectID": "index.html#exploration-ideas",
+    "href": "index.html#exploration-ideas",
+    "title": "Network and Traits Project",
+    "section": "Exploration ideas",
+    "text": "Exploration ideas\n\nExtend the framework beyond plant-pollinator networks (food webs, seed dispersal networks)\nExplore the invasive species extension (optional)"
   }
 ]
