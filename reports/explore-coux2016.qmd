@@ -221,7 +221,7 @@ ggplot(pollinator_totals, aes(x = pollinator, y = total_abundance)) +
   )
 ```
 
-## Traits
+## Trait overview
 
 We have plant traits: growth form, phenology, flower morphology and
 nectar reward (14 plants).
@@ -260,7 +260,7 @@ ggplot(data$pollinator_trait, aes(x = body_length, fill = soc_sol)) +
   )
 ```
 
-## Species similarity from traits
+## Trait spaces
 
 We follow Coux et al. (2016)'s approach: traits are standardised and combined
 into a single dissimilarity via Gower's distance, then ordinated with PCoA. To
@@ -351,15 +351,167 @@ plot_trait_biplot(pollinator_pcoa, pollinator_fit, guild_colors[["pollinator"]])
 
 ## Uniqueness and originality
 
+### Uniqueness
+
+We compute species uniqueness per species per site, using the `funrar` dedicated
+function. Uniqueness is defined as
+
+$$ \text{uniqueness}_i = \min_j d_{ij} $$
+
+that is the minimal functional distance to another species present in the
+community.
+
 ```{r}
-site_species_matrix <- data.matrix(data$plant_abundance)
-row.names(site_species_matrix) <- data$plant_abundance$site
-plant_trait <- tar_read(plant_trait_ready)
-distance_matrix <- data.matrix(FD::gowdis(plant_trait))
-unique <- funrar::uniqueness(
-  site_species_matrix,
-  distance_matrix
+plant_uniqueness <- tar_read(plant_uniqueness)
+pollinator_uniqueness <- tar_read(pollinator_uniqueness)
+all_uniqueness <- rbind(
+  plant_uniqueness |> mutate(guild = "plant"),
+  pollinator_uniqueness |> mutate(guild = "pollinator")
+) |>
+  mutate(species = fct_reorder(species, uniqueness, .fun = median))
+
+ggplot(all_uniqueness, aes(x = species, y = uniqueness, fill = guild)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.1, alpha = 0.4, size = 1) +
+  scale_fill_manual(values = guild_colors) +
+  facet_wrap(~guild, scales = "free_y") +
+  coord_flip() +
+  labs(x = NULL, y = "Functional uniqueness") +
+  theme(legend.position = "none")
+```
+
+### Originality
+
+Functional originality is the distance of a species from the trait centroid
+of the community it belongs to, i.e. how much its traits differ from the
+community's average:
+
+$$ \text{originality}_i = \lVert x_i - \bar{x}_{\text{community}} \rVert $$
+
+We compute it per species per site in the PCoA trait space, with the centroid
+taken over the species present at each site.
+
+```{r}
+plant_originality <- tar_read(plant_originality)
+pollinator_originality <- tar_read(pollinator_originality)
+all_originality <- rbind(
+  plant_originality |> mutate(guild = "plant"),
+  pollinator_originality |> mutate(guild = "pollinator")
+) |>
+  mutate(species = fct_reorder(species, originality, .fun = median))
+
+ggplot(all_originality, aes(x = species, y = originality, fill = guild)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.1, alpha = 0.4, size = 1) +
+  scale_fill_manual(values = guild_colors) +
+  facet_wrap(~guild, scales = "free_y") +
+  coord_flip() +
+  labs(x = NULL, y = "Functional originality") +
+  theme(legend.position = "none")
+```
+
+### Weighted originality
+
+Above, the community centroid treats every present species equally. For
+pollinators we also have abundance data, so we can instead weight the
+centroid by how common each species is at a site.
+
+```{r}
+pollinator_originality_w <- tar_read(pollinator_originality_w)
+
+originality_comparison <- rbind(
+  pollinator_originality |> mutate(weighting = "unweighted"),
+  pollinator_originality_w |> mutate(weighting = "weighted by abundance")
+) |>
+  mutate(
+    weighting = factor(
+      weighting,
+      levels = c("unweighted", "weighted by abundance")
+    ),
+    species_within = reorder(
+      paste(species, weighting, sep = "___"), originality,
+      FUN = median
+    )
+  )
+
+ggplot(
+  originality_comparison,
+  aes(x = species_within, y = originality, fill = weighting)
+) +
+  geom_boxplot(width = 0.5, outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.1, alpha = 0.4, size = 1) +
+  scale_fill_manual(
+    values = c(
+      "unweighted" = "grey60",
+      "weighted by abundance" = guild_colors[["pollinator"]]
+    )
+  ) +
+  scale_x_discrete(labels = \(x) sub("___.*$", "", x)) +
+  facet_wrap(~weighting, scales = "free_y") +
+  coord_flip() +
+  labs(x = NULL, y = "Functional originality") +
+  theme(legend.position = "none")
+```
+
+We see that ranking shift with weighting. Common generalist, such `a_mellifera`
+drop in originality as they pull the community weighted mean, while rarer
+species such as `n_producta` increase in originality.
+
+To check, to what extent species abundance drive their originality we plot
+species weighted originality against their abundance for each site.
+
+```{r}
+pollinator_abundance <- data$pollinator_abundance |>
+  pivot_longer(
+    cols = a_mellifera:t_orthodoxus,
+    names_to = "species",
+    values_to = "abundance"
+  ) |>
+  filter_out(abundance == 0)
+
+originality_abundance <- pollinator_originality_w |>
+  left_join(pollinator_abundance, by = join_by(site, species))
+
+ggplot(
+  originality_abundance,
+  aes(x = log10(abundance), y = originality, color = species),
+) +
+  geom_point() +
+  labs(
+    x = "Abundance (log10 scale)",
+    y = "Weighted originality",
+    color = "Species"
+  )
+```
+
+We see that there is strong negative correlation between weighted originality
+and species abundance. This means that we should be careful if we use this
+metric.
+
+### Originality vs uniqueness
+
+Next, we want to check that species originality and uniqueness are not too
+strongly correlated, to ensure that the two metrics are complementary
+description of species position in the functional space.
+
+```{r}
+pol_originality_uniqueness <- pollinator_originality |>
+  left_join(pollinator_uniqueness, by = join_by(site, species))
+
+plant_originality_uniqueness <- plant_originality |>
+  left_join(plant_uniqueness, by = join_by(site, species))
+
+originality_uniqueness <- rbind(
+  plant_originality_uniqueness |> mutate(guild = "plant"),
+  pol_originality_uniqueness |> mutate(guild = "pollinator")
 )
+
+ggplot(
+  originality_uniqueness, 
+  aes(x = uniqueness, y = originality, color = guild)
+) +
+  geom_point() +
+  labs(x = "Uniqueness", y = "Originality", color = "Guild")
 ```
 
 

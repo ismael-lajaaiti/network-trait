@@ -31,7 +31,8 @@ list(
   tar_quarto(
     report_coux,
     "reports/explore-coux2016.qmd",
-    quarto_args = c("--embed-resources")
+    quarto_args = c("--embed-resources"),
+    quiet = TRUE
   ),
   tar_target(data_coux_folder, "data/raw/coux2016/", format = "file"),
   tar_target(data_coux_raw, read_coux_data(data_coux_folder)),
@@ -69,5 +70,28 @@ list(
   tar_target(
     pollinator_trait_fit,
     fit_trait_ordination(pollinator_trait_pcoa, pollinator_trait_ready)
+  ),
+  tar_target(
+    plant_uniqueness,
+    compute_uniqueness(plant_trait_ready, data_coux$plant_abundance)
+  ),
+  tar_target(
+    pollinator_uniqueness,
+    compute_uniqueness(pollinator_trait_ready, data_coux$pollinator_abundance)
+  ),
+  tar_target(
+    plant_originality,
+    compute_originality(plant_trait_pcoa, data_coux$plant_abundance)
+  ),
+  tar_target(
+    pollinator_originality,
+    compute_originality(pollinator_trait_pcoa, data_coux$pollinator_abundance)
+  ),
+  tar_target(
+    pollinator_originality_w,
+    compute_originality(
+      pollinator_trait_pcoa, data_coux$pollinator_abundance,
+      weighted = TRUE
+    )
   )
 )

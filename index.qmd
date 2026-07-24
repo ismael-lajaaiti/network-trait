@@ -27,10 +27,9 @@ foundation using extinction simulations and structural equation modelling.
 - [x] Acquire and format the plant–pollinator interaction data from
   [@Coux-etal-2016]
 - [x] Clean and overview of Coux data
+- [x] Compute trait-space descriptors (functional originality, uniqueness)
 - [ ] **(in progress)** Compute network structural metrics (degree, Blüthgen's $d'$)
   per species
-- [ ] **(in progress)** Compute trait-space descriptors (functional
-originality, uniqueness)
 - [ ] Compute interaction niche metrics (position, size, originality)
 - [ ] Run extinction simulations (topological and stochastic coextinction)
 - [ ] Fit the structural equation model linking trait position, network

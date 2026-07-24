@@ -203,7 +203,7 @@ compute_trait_pcoa <- function(trait_table, asym.bin = NULL) {
 #' @return named list of `vegan::envfit` objects, one per trait column.
 #' @export
 fit_trait_ordination <- function(pcoa, trait_table, permutations = 999,
-                                  seed = 1) {
+                                 seed = 1) {
   scores <- pcoa$vectors[, 1:2]
   set.seed(seed)
   fits <- lapply(names(trait_table), function(v) {
@@ -355,4 +355,74 @@ plot_trait_biplot <- function(pcoa, fits, arrow_color) {
       color = NULL
     ) +
     ggplot2::coord_equal()
+}
+
+#' Compute species uniqueness per species and site
+#'
+#' @param trait data tibble of species trait
+#' @param presence data tibble of species abundance or presence at given site,
+#' site should be the first column of the tibble
+#'
+#' @return data tibble of species uniquess per site
+#' @export
+compute_uniqueness <- function(trait, presence) {
+  distance_matrix <- data.matrix(FD::gowdis(trait))
+
+  site_species_matrix <- data.matrix(presence[, -1]) # Remove site column.
+  row.names(site_species_matrix) <- presence$site
+
+  suppressMessages(
+    apply(site_species_matrix, 1, function(present) {
+      species_here <- present[present > 0 & !is.na(present)]
+      funrar::uniqueness(t(as.matrix(species_here)), distance_matrix)
+    })
+  ) |>
+    dplyr::bind_rows(.id = "site") |>
+    dplyr::rename(uniqueness = Ui)
+}
+
+#' Compute species functional originality per species and site
+#'
+#' Functional originality is the distance of a species from the trait
+#' centroid of the community it belongs to (Laliberte & Legendre 2010;
+#' Buisson et al. 2013): species whose traits deviate most from their
+#' community's average are the most original. Distances are computed in
+#' the Cailliez-corrected PCoA space so that they are proper Euclidean
+#' distances. The centroid, across present species, of each PCoA axis is
+#' either a plain mean (`weighted = FALSE`) or a mean weighted by each
+#' species' value in `presence` (`weighted = TRUE`), e.g. its abundance at
+#' that site.
+#'
+#' @param pcoa an `ape::pcoa` object (with a Cailliez correction, so that
+#'   `vectors.cor` is available), as returned by `compute_trait_pcoa()`.
+#' @param presence data tibble of species abundance or presence at given site,
+#' site should be the first column of the tibble
+#' @param weighted if `TRUE`, weight the centroid by `presence` (e.g.
+#'   abundance) instead of treating every present species equally.
+#'
+#' @return data tibble of species originality per site
+#' @export
+compute_originality <- function(pcoa, presence, weighted = FALSE) {
+  coords <- pcoa$vectors.cor |>
+    tibble::as_tibble(rownames = "species") |>
+    tidyr::pivot_longer(-species, names_to = "axis", values_to = "value")
+
+  presence_long <- presence |>
+    tidyr::pivot_longer(-site, names_to = "species", values_to = "present") |>
+    dplyr::filter(present > 0, !is.na(present))
+
+  if (!weighted) {
+    presence_long <- presence_long |> dplyr::mutate(present = 1)
+  }
+
+  presence_long |>
+    dplyr::inner_join(
+      coords, by = "species", relationship = "many-to-many"
+    ) |>
+    dplyr::group_by(site, axis) |>
+    dplyr::mutate(centroid = weighted.mean(value, w = present)) |>
+    dplyr::group_by(site, species) |>
+    dplyr::summarise(
+      originality = sqrt(sum((value - centroid)^2)), .groups = "drop"
+    )
 }
