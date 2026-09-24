@@ -390,28 +390,42 @@ plot_trait_biplot <- function(pcoa, fits, arrow_color) {
     ggplot2::coord_equal()
 }
 
-#' Compute species uniqueness per species and site
+#' Compute species functional uniqueness per species and site
 #'
-#' @param trait data tibble of species trait
+#' Functional uniqueness is the distance of a species to its nearest
+#' neighbour among the species present at the same site (Buisson et al.
+#' 2013; Coux et al. 2016). Distances are Euclidean distances in the
+#' Cailliez-corrected PCoA space, the same space as `compute_originality()`,
+#' so that both metrics describe positions in one trait space (and match
+#' the range reported by Coux et al. 2016). A species alone at its site has
+#' no neighbour and is dropped.
+#'
+#' @param pcoa an `ape::pcoa` object (with a Cailliez correction, so that
+#'   `vectors.cor` is available), as returned by `compute_trait_pcoa()`.
 #' @param presence data tibble of species abundance or presence at given site,
 #' site should be the first column of the tibble
 #'
-#' @return data tibble of species uniquess per site
+#' @return data tibble of species uniqueness per site
 #' @export
-compute_uniqueness <- function(trait, presence) {
-  distance_matrix <- data.matrix(FD::gowdis(trait))
+compute_uniqueness <- function(pcoa, presence) {
+  distance_matrix <- as.matrix(stats::dist(pcoa$vectors.cor))
 
-  site_species_matrix <- data.matrix(presence[, -1]) # Remove site column.
-  row.names(site_species_matrix) <- presence$site
-
-  suppressMessages(
-    apply(site_species_matrix, 1, function(present) {
-      species_here <- present[present > 0 & !is.na(present)]
-      funrar::uniqueness(t(as.matrix(species_here)), distance_matrix)
-    })
-  ) |>
-    dplyr::bind_rows(.id = "site") |>
-    dplyr::rename(uniqueness = Ui)
+  presence |>
+    tidyr::pivot_longer(-site, names_to = "species", values_to = "present") |>
+    dplyr::filter(
+      present > 0, !is.na(present), species %in% rownames(distance_matrix)
+    ) |>
+    dplyr::group_by(site) |>
+    dplyr::filter(dplyr::n() > 1) |>
+    dplyr::mutate(
+      uniqueness = apply(
+        distance_matrix[species, species, drop = FALSE] +
+          diag(Inf, dplyr::n()),
+        1, min
+      )
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::select(site, species, uniqueness)
 }
 
 #' Compute species functional originality per species and site
@@ -543,4 +557,155 @@ compute_interaction_niche <- function(web_list, partner_pcoa,
     )
 
   dplyr::inner_join(niche_size, niche_originality, by = c("site", "species"))
+}
+
+#' Read pollinator taxonomy and origin (native/introduced to New Zealand).
+#'
+#' Taxonomy is from Coux et al. (2016)'s supporting information, with two
+#' corrections: `Netelia producta` is an ichneumonid (listed under Apidae
+#' in the SI) and `Thyreocephalus orthodoxus` is a rove beetle (listed
+#' under Diptera). Origin is not given in the SI; it was compiled from NZ
+#' sources, with `origin_confidence` flagging the less certain entries.
+#' This is an annotation, not a trait: it is not used in the trait PCoA.
+#'
+#' @param path path to the annotation csv.
+#'
+#' @return data frame with one row per pollinator.
+#' @export
+read_pollinator_annotation <- function(path) {
+  read.csv(path) |>
+    dplyr::mutate(
+      origin = factor(origin, levels = c("native", "introduced")),
+      origin_confidence = factor(
+        origin_confidence,
+        levels = c("low", "medium", "high"), ordered = TRUE
+      )
+    )
+}
+
+#' Assemble pollinator trait-position and network-position data per site.
+#'
+#' Joins originality, uniqueness, abundance and network metrics for
+#' pollinators, and adds `n_plants`, the number of plants in the site's
+#' web, which is the denominator of normalised degree. Predictors are
+#' standardised (`originality_z`, `uniqueness_z`, `log_abundance_z`) on the
+#' full data set, so that model coefficients stay comparable when a species
+#' is later excluded. Abundance is log-transformed: its effect on degree is
+#' mostly a sampling effect (the more individuals are seen, the more
+#' partners are recorded), expected to saturate.
+#'
+#' @param originality data tibble from `compute_originality()`.
+#' @param uniqueness data tibble from `compute_uniqueness()`.
+#' @param net_metrics data tibble from `compute_network_metrics()`.
+#' @param abundance data tibble of pollinator abundance per site, site as
+#'   first column, as in `data_coux$pollinator_abundance`.
+#' @param web_list named list of interaction matrices, plants as rows, as
+#'   returned by `get_interaction_matrix()`.
+#'
+#' @return data tibble with one row per pollinator and site.
+#' @export
+prepare_trait_network_data <- function(originality, uniqueness, net_metrics,
+                                       abundance, web_list) {
+  abundance <- abundance |>
+    tidyr::pivot_longer(-site, names_to = "species", values_to = "abundance")
+  n_plants <- tibble::tibble(
+    site = names(web_list),
+    n_plants = vapply(web_list, nrow, integer(1))
+  )
+  originality |>
+    dplyr::inner_join(uniqueness, by = c("site", "species")) |>
+    dplyr::inner_join(
+      net_metrics |>
+        dplyr::filter(guild == "pollinator") |>
+        dplyr::select(site, species, degree, normalised_degree, d_prime),
+      by = c("site", "species")
+    ) |>
+    dplyr::inner_join(abundance, by = c("site", "species")) |>
+    dplyr::inner_join(n_plants, by = "site") |>
+    dplyr::mutate(
+      originality_z = as.numeric(scale(originality)),
+      uniqueness_z = as.numeric(scale(uniqueness)),
+      log_abundance_z = as.numeric(scale(log(abundance)))
+    )
+}
+
+#' Fit a trait-position -> network-position mixed model with INLA.
+#'
+#' `response ~ originality_z + uniqueness_z + log_abundance_z + (1 | site)
+#' + (1 | species)`, with site and species as iid random effects under PC
+#' priors
+#' (P(sd > 1) = 0.01). The likelihood depends on the response:
+#' - `"degree"`: binomial, a pollinator's degree out of the `n_plants`
+#'   plants of its site, i.e. normalised degree modelled on its own scale.
+#' - `"d_prime"`: beta. A third of d' values sit exactly at 0 or 1, which a
+#'   beta cannot take, so values within 0.01 of either bound are treated as
+#'   censored (`beta.censor.value`) instead of being squeezed inwards.
+#'   `cmin = 0` stabilises the Laplace approximation, which otherwise fails
+#'   to converge on this likelihood.
+#'
+#' @param data data tibble from `prepare_trait_network_data()`.
+#' @param response `"degree"` or `"d_prime"`.
+#'
+#' @return an `inla` object.
+#' @export
+fit_trait_network_model <- function(data, response = c("degree", "d_prime")) {
+  response <- match.arg(response)
+  pc_prior <- list(prec = list(prior = "pc.prec", param = c(1, 0.01)))
+  formula <- stats::as.formula(paste(
+    response,
+    "~ originality_z + uniqueness_z + log_abundance_z",
+    "+ f(site, model = 'iid', hyper = pc_prior)",
+    "+ f(species, model = 'iid', hyper = pc_prior)"
+  ))
+  if (response == "degree") {
+    INLA::inla(
+      formula,
+      family = "binomial", Ntrials = data$n_plants, data = data
+    )
+  } else {
+    data <- dplyr::filter(data, !is.na(d_prime))
+    INLA::inla(
+      formula,
+      family = "beta", data = data,
+      control.family = list(beta.censor.value = 0.01),
+      control.inla = list(cmin = 0)
+    )
+  }
+}
+
+#' Fit trait -> network models with and without a focal species.
+#'
+#' Fits `fit_trait_network_model()` for each response, on all pollinators
+#' and on all but `exclude`, and tidies the fixed effects.
+#' `prob_positive` is the posterior probability that the coefficient is
+#' above 0.
+#'
+#' @param data data tibble from `prepare_trait_network_data()`.
+#' @param exclude species to drop in the sensitivity fit.
+#' @param responses responses passed to `fit_trait_network_model()`.
+#'
+#' @return data tibble with one row per response, data set and fixed
+#'   effect.
+#' @export
+compare_trait_network_models <- function(data, exclude = "a_mellifera",
+                                         responses = c("degree", "d_prime")) {
+  datasets <- list(data, dplyr::filter(data, !species %in% exclude))
+  names(datasets) <- c("all", paste("without", paste(exclude, collapse = ", ")))
+  grid <- tidyr::expand_grid(response = responses, dataset = names(datasets))
+  purrr::pmap(grid, function(response, dataset) {
+    fit <- fit_trait_network_model(datasets[[dataset]], response)
+    prob_positive <- vapply(
+      fit$marginals.fixed,
+      function(m) 1 - INLA::inla.pmarginal(0, m),
+      numeric(1)
+    )
+    fit$summary.fixed |>
+      tibble::as_tibble(rownames = "term") |>
+      dplyr::transmute(
+        response = response, dataset = dataset, term,
+        mean, lower = `0.025quant`, upper = `0.975quant`,
+        prob_positive = prob_positive[term]
+      )
+  }) |>
+    dplyr::bind_rows()
 }

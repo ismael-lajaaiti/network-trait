@@ -30,6 +30,8 @@ foundation using extinction simulations and structural equation modelling.
 - [x] Compute trait-space descriptors (functional originality, uniqueness)
 - [x] Compute network structural metrics (degree, Blüthgen's $d'$) per species
 - [x] Compute interaction niche metrics (position, size, originality)
+- [x] Annotate pollinators with taxonomy and origin (native/introduced)
+- [ ] Check trait–network relationships with and without *A. mellifera*
 - [ ] Run extinction simulations (topological and stochastic coextinction)
 - [ ] Fit the structural equation model linking trait position, network
   embedding, interaction niche, and robustness

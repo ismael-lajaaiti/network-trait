@@ -436,13 +436,15 @@ plot_trait_biplot(pollinator_pcoa, pollinator_fit, guild_colors[["pollinator"]])
 
 ### Uniqueness
 
-We compute species uniqueness per species per site, using the `funrar` dedicated
-function. Uniqueness is defined as
+We compute species uniqueness per species per site. Uniqueness is defined as
 
 $$ \text{uniqueness}_i = \min_j d_{ij} $$
 
 that is the minimal functional distance to another species present in the
-community.
+community. Following @Coux-etal-2016, $d_{ij}$ is the Euclidean distance in the
+Cailliez-corrected PCoA space, the same space in which we compute originality
+below, so that both metrics describe positions in a single trait space. A
+species alone at its site has no neighbour and is left out.
 
 ```{r}
 plant_uniqueness <- tar_read(plant_uniqueness)
@@ -661,3 +663,273 @@ ggplot(
 ```
 
 
+
+## Pollinator origin
+
+The sites are in New Zealand. We annotate each pollinator with its taxonomy
+(from the supporting information of @Coux-etal-2016) and whether it is native
+or introduced to New Zealand (compiled separately, with a confidence level; see
+`data/annotation/pollinator_annotation.csv`). The annotation is not a trait and
+does not enter the trait PCoA.
+
+```{r}
+pollinator_annotation <- tar_read(pollinator_annotation)
+pollinator_annotation |>
+  select(species_name, family, group, origin, origin_confidence) |>
+  arrange(origin, group, family) |>
+  knitr::kable()
+```
+
+Eleven of the 16 pollinator species are introduced. They also make up more
+than half of the pollinator species at 13 of the 21 sites.
+
+```{r}
+origin_share <- data$pollinator_abundance |>
+  pivot_longer(-site, names_to = "pollinator", values_to = "abundance") |>
+  filter(abundance > 0) |>
+  mutate(presence = 1) |>
+  left_join(pollinator_annotation, by = join_by(pollinator)) |>
+  mutate(
+    class = case_when(
+      pollinator == "a_mellifera" ~ "A. mellifera",
+      origin == "native" ~ "Native",
+      origin == "introduced" ~ "Introduced"
+    ),
+    class = factor(class, levels = c("Native", "Introduced", "A. mellifera"))
+  ) |>
+  group_by(site, class) |>
+  summarise(class_richness = sum(presence), .groups = "drop_last") |>
+  mutate(share = class_richness / sum(class_richness)) |>
+  ungroup()
+
+native_order <- origin_share |>
+  filter(class == "Native") |>
+  arrange(share) |>
+  pull(site)
+
+origin_colors <- c(
+  Native = "#3a9e5f", Introduced = "grey60", `A. mellifera` = "#d4a017"
+)
+
+site_order <- union(native_order, unique(origin_share$site))
+
+p_share <- origin_share |>
+  mutate(site = factor(site, levels = site_order)) |>
+  ggplot(aes(x = site, y = share, fill = class)) +
+  geom_col(width = 0.7) +
+  coord_flip() +
+  scale_fill_manual(values = origin_colors) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = NULL, y = "Share of pollinator species", fill = NULL) +
+  theme(legend.position = "top")
+
+pollinator_richness <- site_richness |>
+  filter(guild == "pollinator") |>
+  mutate(site = factor(site, levels = site_order))
+
+p_richness <- ggplot(pollinator_richness, aes(x = site, y = n_species)) +
+  geom_col(width = 0.7, fill = guild_colors[["pollinator"]]) +
+  coord_flip() +
+  labs(x = NULL, y = "Pollinator richness") +
+  theme(
+    axis.text.y = element_blank(),
+    panel.grid.major.y = element_blank()
+  )
+
+cowplot::plot_grid(
+  p_share, p_richness,
+  nrow = 1, rel_widths = c(3, 1), align = "h", axis = "tb"
+)
+```
+
+
+## Trait position vs network position
+
+@Coux-etal-2016 found that a pollinator's position in trait space is linked to
+its position in the network: functionally original pollinators tend to be more
+specialised. This link is also the first path of our planned SEM (originality
+→ degree). Here we check whether it holds in our data, and whether it holds
+for the whole pollinator community or comes from *A. mellifera* alone. The
+honeybee provides 18 of the 90 pollinator-site rows, and all 18 sit at high
+originality and high degree.
+
+```{r}
+pollinator_trait_network <- tar_read(pollinator_trait_network)
+
+trait_network_long <- pollinator_trait_network |>
+  mutate(
+    focal = if_else(species == "a_mellifera", "A. mellifera", "Other"),
+    focal = factor(focal, levels = c("Other", "A. mellifera"))
+  ) |>
+  pivot_longer(
+    c(originality, uniqueness),
+    names_to = "trait_metric", values_to = "trait_value"
+  ) |>
+  pivot_longer(
+    c(normalised_degree, d_prime),
+    names_to = "network_metric", values_to = "network_value"
+  ) |>
+  mutate(
+    network_metric = factor(
+      network_metric,
+      levels = c("normalised_degree", "d_prime"),
+      labels = c("Normalised degree", "d′")
+    ),
+    trait_metric = factor(
+      trait_metric,
+      levels = c("originality", "uniqueness"),
+      labels = c("Originality", "Uniqueness")
+    )
+  )
+
+ggplot(
+  trait_network_long,
+  aes(x = trait_value, y = network_value, color = focal)
+) +
+  geom_point(size = 1.8, alpha = 0.8, na.rm = TRUE) +
+  scale_color_manual(
+    values = c(Other = "grey60", `A. mellifera` = origin_colors[["A. mellifera"]])
+  ) +
+  facet_grid(network_metric ~ trait_metric, scales = "free", switch = "both") +
+  labs(x = NULL, y = NULL, color = NULL) +
+  theme(strip.placement = "outside", legend.position = "top")
+```
+
+### Pooled correlations
+
+As a first pass, we compute Spearman correlations over all pollinator-site
+rows, with and without *A. mellifera*. This treats every row as independent,
+which it is not: species occur at several sites and sites differ.
+
+```{r}
+spearman_summary <- function(data) {
+  tidyr::expand_grid(
+    trait_metric = c("originality", "uniqueness"),
+    network_metric = c("normalised_degree", "d_prime")
+  ) |>
+    rowwise() |>
+    mutate(
+      test = list(suppressWarnings(cor.test(
+        data[[trait_metric]], data[[network_metric]],
+        method = "spearman", exact = FALSE
+      ))),
+      rho = unname(test$estimate),
+      p = test$p.value,
+      n = sum(complete.cases(data[[trait_metric]], data[[network_metric]]))
+    ) |>
+    ungroup() |>
+    select(-test)
+}
+
+bind_rows(
+  all = spearman_summary(pollinator_trait_network),
+  `without A. mellifera` = spearman_summary(
+    filter(pollinator_trait_network, species != "a_mellifera")
+  ),
+  .id = "dataset"
+) |>
+  mutate(across(c(rho, p), \(x) round(x, 3))) |>
+  arrange(trait_metric, network_metric, dataset) |>
+  knitr::kable()
+```
+
+Removing the honeybee changes the picture:
+
+- the uniqueness-degree correlation is significant with the honeybee but not
+  without it;
+- the originality-degree correlation flips sign;
+- only the originality-d′ correlation is similar either way.
+
+### Mixed models
+
+We fit mixed models with `INLA`, with site and species as random intercepts,
+so that each species' repeated occurrences and each site's network size are
+accounted for. Originality and uniqueness enter together, along with log
+abundance. Abundance matters because a species seen more often has more of
+its partners recorded. All three predictors are standardised on the full
+data set, so that coefficients are comparable with and without the honeybee.
+
+- **Normalised degree** is modelled as a binomial: a pollinator's number of
+  plant partners out of the plants present at its site.
+- **d′** is modelled with a beta likelihood. A third of the d′ values are
+  exactly 0 or 1, which a beta cannot take, so values within 0.01 of either
+  bound are treated as censored.
+- Random-effect precisions have PC priors, with P(sd > 1) = 0.01.
+
+See `fit_trait_network_model()` in `R/analyse-coux.R` for details.
+
+```{r}
+trait_network_models <- tar_read(trait_network_models)
+
+trait_network_models |>
+  filter(term != "(Intercept)") |>
+  mutate(
+    term = recode_values(
+      term,
+      from = c("originality_z", "uniqueness_z", "log_abundance_z"),
+      to = c("Originality", "Uniqueness", "Log abundance")
+    ),
+    response = factor(
+      response,
+      levels = c("degree", "d_prime"),
+      labels = c("Normalised degree (binomial)", "d′ (beta)")
+    ),
+    dataset = recode_values(
+      dataset,
+      from = "without a_mellifera", to = "without A. mellifera",
+      default = dataset
+    )
+  ) |>
+  ggplot(aes(x = mean, y = term, color = dataset)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_pointrange(
+    aes(xmin = lower, xmax = upper),
+    position = position_dodge(width = 0.5)
+  ) +
+  scale_color_manual(
+    values = c(
+      all = origin_colors[["A. mellifera"]], `without A. mellifera` = "grey40"
+    )
+  ) +
+  facet_wrap(~response) +
+  labs(
+    x = "Posterior mean and 95% credible interval (link scale, per SD)",
+    y = NULL, color = NULL
+  ) +
+  theme(legend.position = "top")
+```
+
+```{r}
+trait_network_models |>
+  filter(term != "(Intercept)") |>
+  mutate(across(c(mean, lower, upper, prob_positive), \(x) round(x, 2))) |>
+  knitr::kable()
+```
+
+With species as a random effect and abundance in the model, the honeybee
+has much less influence:
+
+- **Abundance → normalised degree** is strongly positive (about +0.4 per SD,
+  with or without the honeybee): abundant species have more partners
+  recorded. Abundance has no clear effect on d′, which is corrected for
+  partner frequency.
+- **Originality → normalised degree** is negative (about −0.3 to −0.4 per
+  SD). More original pollinators visit a smaller share of the plants at
+  their site, at equal abundance. The effect is a bit stronger once
+  abundance is accounted for: abundant species tend to be more original,
+  mostly because of the honeybee, which partly hid it. Without the honeybee
+  the estimate is similar, but its interval just includes 0 (P(β > 0) = 0.06).
+  In the pooled correlations, the honeybee's 18 rows at high originality and
+  high degree hid this effect entirely.
+- **Originality → d′** is positive in both fits (P(β > 0) ≈ 0.8–0.9), which
+  goes in the same direction: more original pollinators are more specialised.
+  The credible interval includes 0.
+- **Uniqueness** has no clear effect on either response. The pooled
+  correlation between uniqueness and degree (ρ = 0.26), similar to the
+  positive relationship reported by @Coux-etal-2016, came from the honeybee:
+  it is the most unique pollinator at 12 of its 18 sites.
+
+Overall, the data agree with the direction of the @Coux-etal-2016 result, but
+the effects are weak. The originality coefficients mix differences between
+species with differences within a species across sites; separating the two
+would need a within/between species decomposition.

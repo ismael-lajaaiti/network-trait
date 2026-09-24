@@ -8,7 +8,8 @@ tar_option_set(
     "here",
     "dplyr",
     "tidyr",
-    "rdryad"
+    "rdryad",
+    "INLA"
   )
 )
 
@@ -37,6 +38,15 @@ list(
   tar_target(data_coux_folder, "data/raw/coux2016/", format = "file"),
   tar_target(data_coux_raw, read_coux_data(data_coux_folder)),
   tar_target(data_coux, clean_coux_data(data_coux_raw)),
+  tar_target(
+    pollinator_annotation_file,
+    "data/annotation/pollinator_annotation.csv",
+    format = "file"
+  ),
+  tar_target(
+    pollinator_annotation,
+    read_pollinator_annotation(pollinator_annotation_file)
+  ),
   tar_target(web_list, get_interaction_matrix(data_coux$interaction)),
   tar_target(net_metrics, compute_network_metrics(web_list)),
   tar_target(
@@ -73,11 +83,13 @@ list(
   ),
   tar_target(
     plant_uniqueness,
-    compute_uniqueness(plant_trait_ready, data_coux$plant_abundance)
+    compute_uniqueness(plant_trait_pcoa, data_coux$plant_abundance)
   ),
   tar_target(
     pollinator_uniqueness,
-    compute_uniqueness(pollinator_trait_ready, data_coux$pollinator_abundance)
+    compute_uniqueness(
+      pollinator_trait_pcoa, data_coux$pollinator_abundance
+    )
   ),
   tar_target(
     plant_originality,
@@ -101,5 +113,16 @@ list(
   tar_target(
     plant_interaction_niche,
     compute_interaction_niche(web_list, pollinator_trait_pcoa, level = "lower")
+  ),
+  tar_target(
+    pollinator_trait_network,
+    prepare_trait_network_data(
+      pollinator_originality, pollinator_uniqueness, net_metrics,
+      data_coux$pollinator_abundance, web_list
+    )
+  ),
+  tar_target(
+    trait_network_models,
+    compare_trait_network_models(pollinator_trait_network)
   )
 )

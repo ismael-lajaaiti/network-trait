@@ -1,0 +1,17 @@
+pollinator,species_name,order,family,group,origin,origin_confidence,origin_note
+a_mellifera,Apis mellifera,Hymenoptera,Apidae,bee,introduced,high,Introduced from Europe (1839)
+b_terrestris,Bombus terrestris,Hymenoptera,Apidae,bee,introduced,high,Introduced from Europe (1885)
+l_sordidum,Lasioglossum sordidum,Hymenoptera,Halictidae,bee,native,high,Endemic solitary bee
+i_promissorius,Ichneumon promissorius,Hymenoptera,Ichneumonidae,wasp,introduced,medium,Australian species established in NZ; arrival route undocumented
+n_producta,Netelia producta,Hymenoptera,Ichneumonidae,wasp,introduced,low,Considered Australian; NZ status unclear. Listed under Apidae in Coux SI (error)
+d_platura,Delia platura,Diptera,Anthomyiidae,other_fly,introduced,medium,Cosmopolitan crop pest of Palaearctic origin
+c_stygia,Calliphora stygia,Diptera,Calliphoridae,other_fly,introduced,high,From Australia; first NZ record 1841 (Landcare FNZ 8)
+c_vicina,Calliphora vicina,Diptera,Calliphoridae,other_fly,introduced,high,Holarctic blowfly
+p_pseudorudis,Pollenia pseudorudis,Diptera,Calliphoridae,other_fly,introduced,high,Palaearctic cluster fly; established in Auckland 1984
+o_atrovirens,Odontomyia atrovirens,Diptera,Stratiomyidae,other_fly,native,low,Described from NZ (Bigot 1879); endemism not confirmed
+e_tenax,Eristalis tenax,Diptera,Syrphidae,hoverfly,introduced,high,Cosmopolitan drone fly of Palaearctic origin
+m_novae_zelandiae,Melangyna novaezelandiae,Diptera,Syrphidae,hoverfly,native,high,Native (also in Australia)
+h_hochstetteri,Helophilus hochstetteri,Diptera,Syrphidae,hoverfly,native,high,Endemic hoverfly
+o_varia,Oxysarcodexia varia,Diptera,Sarcophagidae,other_fly,introduced,high,Neotropical genus; adventive in NZ
+p_marginata,Pales marginata,Diptera,Tachinidae,other_fly,native,medium,Described by Hutton from NZ; genus has many NZ endemics
+t_orthodoxus,Thyreocephalus orthodoxus,Coleoptera,Staphylinidae,beetle,introduced,high,Australian rove beetle adventive in NZ. Listed under Diptera in Coux SI (error)
