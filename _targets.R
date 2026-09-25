@@ -47,6 +47,13 @@ list(
     pollinator_annotation,
     read_pollinator_annotation(pollinator_annotation_file)
   ),
+  tar_target(
+    pollinator_abundance,
+    remove_abundance_record(
+      data_coux$pollinator_abundance,
+      site = "blabrolee", species = "l_sordidum"
+    )
+  ),
   tar_target(web_list, get_interaction_matrix(data_coux$interaction)),
   tar_target(net_metrics, compute_network_metrics(web_list)),
   tar_target(
@@ -63,6 +70,12 @@ list(
       plant_trait_ready,
       asym.bin = which(
         names(plant_trait_ready) %in% c("spring", "summer", "fall", "winter")
+      ),
+      weights = get_trait_weights(
+        plant_trait_ready,
+        groups = list(
+          flowering_season = c("spring", "summer", "fall", "winter")
+        )
       )
     )
   ),
@@ -70,7 +83,18 @@ list(
     pollinator_trait_pcoa,
     compute_trait_pcoa(
       pollinator_trait_ready,
-      asym.bin = which(grepl("^larv_", names(pollinator_trait_ready)))
+      asym.bin = which(grepl("^larv_", names(pollinator_trait_ready))),
+      weights = get_trait_weights(
+        pollinator_trait_ready,
+        groups = list(
+          body_size = c("body_length", "body_weigth"),
+          food_preference = c("pref_nec", "pref_pol"),
+          larval_diet = grep(
+            "^larv_", names(pollinator_trait_ready),
+            value = TRUE
+          )
+        )
+      )
     )
   ),
   tar_target(
@@ -88,7 +112,7 @@ list(
   tar_target(
     pollinator_uniqueness,
     compute_uniqueness(
-      pollinator_trait_pcoa, data_coux$pollinator_abundance
+      pollinator_trait_pcoa, pollinator_abundance
     )
   ),
   tar_target(
@@ -97,12 +121,12 @@ list(
   ),
   tar_target(
     pollinator_originality,
-    compute_originality(pollinator_trait_pcoa, data_coux$pollinator_abundance)
+    compute_originality(pollinator_trait_pcoa, pollinator_abundance)
   ),
   tar_target(
     pollinator_originality_w,
     compute_originality(
-      pollinator_trait_pcoa, data_coux$pollinator_abundance,
+      pollinator_trait_pcoa, pollinator_abundance,
       weighted = TRUE
     )
   ),
@@ -117,12 +141,24 @@ list(
   tar_target(
     pollinator_trait_network,
     prepare_trait_network_data(
-      pollinator_originality, pollinator_uniqueness, net_metrics,
-      data_coux$pollinator_abundance, web_list
+      pollinator_originality, pollinator_originality_w, pollinator_uniqueness,
+      net_metrics, pollinator_abundance, web_list
     )
   ),
   tar_target(
     trait_network_models,
     compare_trait_network_models(pollinator_trait_network)
+  ),
+  tar_target(
+    trait_network_models_richness,
+    compare_trait_network_models(
+      pollinator_trait_network,
+      models = list(
+        `weighted originality` = c(
+          "originality_w_z", "log_abundance_z", "log_n_plants_z"
+        ),
+        originality = c("originality_z", "log_abundance_z", "log_n_plants_z")
+      )
+    )
   )
 )

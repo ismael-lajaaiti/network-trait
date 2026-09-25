@@ -1,5 +1,6 @@
 ---
 title: "Explore data of Coux et al. 2016"
+bibliography: ../references.bib
 format:
   html:
     embed-resources: true
@@ -262,11 +263,18 @@ ggplot(dprime_by_species, aes(x = species, y = d_prime, fill = guild)) +
   theme(legend.position = "none")
 ```
 
-### Generality (HS) per species
+### Specificity (HS) per species
 
-HS is the raw Shannon entropy of a species' interaction distribution — how
-evenly it spreads its visits across its partners — without correcting for
-partner frequency, unlike d′.
+HS is the Shannon-based specificity used by @Coux-etal-2016, from Poisot's
+`ESM` package:
+
+$$ \text{HS}_i = 1 - \frac{H_i}{\log R} $$
+
+where $H_i$ is the Shannon entropy of species $i$'s visits across plants and
+$R$ is the number of plants visited by anyone at the site. A species with a
+single partner has HS = 1 (a perfect specialist); one spreading its visits
+evenly over every available plant has HS = 0. Unlike d′, it does not
+correct for how often each partner is visited overall. See `compute_hs()`.
 
 ```{r}
 hs_by_species <- net_metrics |>
@@ -278,7 +286,7 @@ ggplot(hs_by_species, aes(x = species, y = hs, fill = guild)) +
   scale_fill_manual(values = guild_colors) +
   facet_wrap(~guild, scales = "free_y") +
   coord_flip() +
-  labs(x = NULL, y = "Generality (Shannon entropy, HS)") +
+  labs(x = NULL, y = "Specificity (HS)") +
   theme(legend.position = "none")
 ```
 
@@ -662,21 +670,18 @@ ggplot(
   theme(legend.position = "none")
 ```
 
-
-
 ## Pollinator origin
 
-The sites are in New Zealand. We annotate each pollinator with its taxonomy
-(from the supporting information of @Coux-etal-2016) and whether it is native
-or introduced to New Zealand (compiled separately, with a confidence level; see
-`data/annotation/pollinator_annotation.csv`). The annotation is not a trait and
-does not enter the trait PCoA.
+We get for each species whether they are native to New-Zealand or have been
+introduced. We do so to get a rough sense whether species native status might
+drive some of the patterns we observe. This is motivated by the dominance of the
+honeybee (A. Mellifera) which is an introduced species.
 
 ```{r}
 pollinator_annotation <- tar_read(pollinator_annotation)
 pollinator_annotation |>
-  select(species_name, family, group, origin, origin_confidence) |>
-  arrange(origin, group, family) |>
+  select(species_name, origin, origin_confidence) |>
+  arrange(origin, species_name) |>
   knitr::kable()
 ```
 
@@ -742,194 +747,155 @@ cowplot::plot_grid(
 )
 ```
 
+## Does functional originality predicts pollinator specialism
 
-## Trait position vs network position
-
-@Coux-etal-2016 found that a pollinator's position in trait space is linked to
-its position in the network: functionally original pollinators tend to be more
-specialised. This link is also the first path of our planned SEM (originality
-→ degree). Here we check whether it holds in our data, and whether it holds
-for the whole pollinator community or comes from *A. mellifera* alone. The
-honeybee provides 18 of the 90 pollinator-site rows, and all 18 sit at high
-originality and high degree.
+@Coux-etal-2016 report that a pollinator's functional originality predicts
+its role in the network: its normalised degree (ND) and its specificity (HS).
+Their models regress ND and HS on *abundance-weighted* originality and on
+abundance, plus a few other terms with small effects that we leave aside
+here.
 
 ```{r}
 pollinator_trait_network <- tar_read(pollinator_trait_network)
+trait_network_models <- tar_read(trait_network_models)
+trait_network_models_richness <- tar_read(trait_network_models_richness)
 
-trait_network_long <- pollinator_trait_network |>
-  mutate(
-    focal = if_else(species == "a_mellifera", "A. mellifera", "Other"),
-    focal = factor(focal, levels = c("Other", "A. mellifera"))
-  ) |>
+# Format a coefficient as "mean [lower, upper]".
+coef_text <- function(tbl, response, model, term) {
+  row <- tbl[tbl$response == response & tbl$model == model &
+    tbl$term == term, ]
+  sprintf("%.2f [%.2f, %.2f]", row$mean, row$lower, row$upper)
+}
+spearman <- function(x, y) {
+  sprintf("%.2f", cor(x, y, method = "spearman"))
+}
+```
+
+### Weighted and unweighted originality
+
+When weighting the community centroid by abundance an abundant species drags the
+centroid towards itself. The more abundant you are, the closer you sit to the
+centroid, and the less "original" you look.
+
+```{r}
+originality_vs_abundance <- pollinator_trait_network |>
+  select(site, species, abundance, originality, originality_w) |>
   pivot_longer(
-    c(originality, uniqueness),
-    names_to = "trait_metric", values_to = "trait_value"
-  ) |>
-  pivot_longer(
-    c(normalised_degree, d_prime),
-    names_to = "network_metric", values_to = "network_value"
+    c(originality, originality_w),
+    names_to = "measure", values_to = "value"
   ) |>
   mutate(
-    network_metric = factor(
-      network_metric,
-      levels = c("normalised_degree", "d_prime"),
-      labels = c("Normalised degree", "d′")
-    ),
-    trait_metric = factor(
-      trait_metric,
-      levels = c("originality", "uniqueness"),
-      labels = c("Originality", "Uniqueness")
+    measure = factor(
+      measure,
+      levels = c("originality", "originality_w"),
+      labels = c(
+        paste0(
+          "Unweighted (ρ = ",
+          spearman(
+            pollinator_trait_network$originality,
+            log(pollinator_trait_network$abundance)
+          ), ")"
+        ),
+        paste0(
+          "Weighted by abundance (ρ = ",
+          spearman(
+            pollinator_trait_network$originality_w,
+            log(pollinator_trait_network$abundance)
+          ), ")"
+        )
+      )
     )
   )
 
-ggplot(
-  trait_network_long,
-  aes(x = trait_value, y = network_value, color = focal)
-) +
-  geom_point(size = 1.8, alpha = 0.8, na.rm = TRUE) +
-  scale_color_manual(
-    values = c(Other = "grey60", `A. mellifera` = origin_colors[["A. mellifera"]])
-  ) +
-  facet_grid(network_metric ~ trait_metric, scales = "free", switch = "both") +
-  labs(x = NULL, y = NULL, color = NULL) +
-  theme(strip.placement = "outside", legend.position = "top")
+ggplot(originality_vs_abundance, aes(x = abundance, y = value)) +
+  geom_point(color = guild_colors[["pollinator"]], alpha = 0.7) +
+  scale_x_log10() +
+  facet_wrap(~measure, scales = "free_y") +
+  labs(x = "Abundance (log scale)", y = "Functional originality")
 ```
 
-### Pooled correlations
 
-As a first pass, we compute Spearman correlations over all pollinator-site
-rows, with and without *A. mellifera*. This treats every row as independent,
-which it is not: species occur at several sites and sites differ.
+
+### The models
+
+We fit the model of @Coux-etal-2016 and the same model with unweighted
+originality, for both responses:
+
+- **ND ~ weighted originality + abundance** (as in Coux et al.)
+- **ND ~ originality + abundance**
+- and the same two models for **HS**.
+
+All models are mixed models fitted with `INLA`, with site and species as
+random intercepts
+
+- **ND** is modelled as a binomial: the number of plants a pollinator visits,
+  out of the plants at its site.
+- **HS** is modelled as Gaussian, like the linear mixed models of Coux et al.
+  That's a crude choice for a measure bounded by 0 and 1, with every
+  single-partner species sitting exactly at 1, but it keeps the comparison
+  with their analysis honest.
+
+Abundance is log-transformed. All predictors are standardised, so
+coefficients are per standard deviation, on the link scale.
 
 ```{r}
-spearman_summary <- function(data) {
-  tidyr::expand_grid(
-    trait_metric = c("originality", "uniqueness"),
-    network_metric = c("normalised_degree", "d_prime")
-  ) |>
-    rowwise() |>
+term_labels <- c(
+  originality_z = "Originality",
+  originality_w_z = "Originality",
+  log_abundance_z = "Log abundance",
+  log_n_plants_z = "Log plant richness"
+)
+response_labels <- c(
+  degree = "Normalised degree (binomial)",
+  hs = "Specificity, HS (Gaussian)"
+)
+model_colors <- c(
+  `weighted originality` = "grey45",
+  originality = guild_colors[["pollinator"]]
+)
+
+plot_coefficients <- function(tbl) {
+  tbl |>
+    filter(term != "(Intercept)") |>
     mutate(
-      test = list(suppressWarnings(cor.test(
-        data[[trait_metric]], data[[network_metric]],
-        method = "spearman", exact = FALSE
-      ))),
-      rho = unname(test$estimate),
-      p = test$p.value,
-      n = sum(complete.cases(data[[trait_metric]], data[[network_metric]]))
+      term = factor(
+        term_labels[term],
+        levels = rev(unique(term_labels))
+      ),
+      response = factor(
+        response_labels[response],
+        levels = response_labels
+      ),
+      model = factor(model, levels = names(model_colors))
     ) |>
-    ungroup() |>
-    select(-test)
+    ggplot(aes(x = mean, y = term, color = model)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+    geom_pointrange(
+      aes(xmin = lower, xmax = upper),
+      position = position_dodge(width = 0.5)
+    ) +
+    scale_color_manual(values = model_colors) +
+    facet_wrap(~response, scales = "free_x") +
+    labs(
+      x = "Posterior mean and 95% credible interval (per SD)",
+      y = NULL, color = NULL
+    ) +
+    theme(legend.position = "top")
 }
 
-bind_rows(
-  all = spearman_summary(pollinator_trait_network),
-  `without A. mellifera` = spearman_summary(
-    filter(pollinator_trait_network, species != "a_mellifera")
-  ),
-  .id = "dataset"
-) |>
-  mutate(across(c(rho, p), \(x) round(x, 3))) |>
-  arrange(trait_metric, network_metric, dataset) |>
-  knitr::kable()
+plot_coefficients(trait_network_models)
 ```
 
-Removing the honeybee changes the picture:
+### Conclusion
 
-- the uniqueness-degree correlation is significant with the honeybee but not
-  without it;
-- the originality-degree correlation flips sign;
-- only the originality-d′ correlation is similar either way.
+Are functionally original pollinators specialists? In these
+data, the honest answer is "yes, it seems so":
 
-### Mixed models
+1. The weighted originality used by @Coux-etal-2016 is partly a measure of
+   abundance. In a model that also includes abundance, it takes some of the
+   credit for abundance's effect.
+2. With unweighted originality, a trait-only measure, the effect on ND is
+   weaker, and about half of it goes away once plant richness is accounted
+   for.
+3. Neither version predicts HS.
 
-We fit mixed models with `INLA`, with site and species as random intercepts,
-so that each species' repeated occurrences and each site's network size are
-accounted for. Originality and uniqueness enter together, along with log
-abundance. Abundance matters because a species seen more often has more of
-its partners recorded. All three predictors are standardised on the full
-data set, so that coefficients are comparable with and without the honeybee.
-
-- **Normalised degree** is modelled as a binomial: a pollinator's number of
-  plant partners out of the plants present at its site.
-- **d′** is modelled with a beta likelihood. A third of the d′ values are
-  exactly 0 or 1, which a beta cannot take, so values within 0.01 of either
-  bound are treated as censored.
-- Random-effect precisions have PC priors, with P(sd > 1) = 0.01.
-
-See `fit_trait_network_model()` in `R/analyse-coux.R` for details.
-
-```{r}
-trait_network_models <- tar_read(trait_network_models)
-
-trait_network_models |>
-  filter(term != "(Intercept)") |>
-  mutate(
-    term = recode_values(
-      term,
-      from = c("originality_z", "uniqueness_z", "log_abundance_z"),
-      to = c("Originality", "Uniqueness", "Log abundance")
-    ),
-    response = factor(
-      response,
-      levels = c("degree", "d_prime"),
-      labels = c("Normalised degree (binomial)", "d′ (beta)")
-    ),
-    dataset = recode_values(
-      dataset,
-      from = "without a_mellifera", to = "without A. mellifera",
-      default = dataset
-    )
-  ) |>
-  ggplot(aes(x = mean, y = term, color = dataset)) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
-  geom_pointrange(
-    aes(xmin = lower, xmax = upper),
-    position = position_dodge(width = 0.5)
-  ) +
-  scale_color_manual(
-    values = c(
-      all = origin_colors[["A. mellifera"]], `without A. mellifera` = "grey40"
-    )
-  ) +
-  facet_wrap(~response) +
-  labs(
-    x = "Posterior mean and 95% credible interval (link scale, per SD)",
-    y = NULL, color = NULL
-  ) +
-  theme(legend.position = "top")
-```
-
-```{r}
-trait_network_models |>
-  filter(term != "(Intercept)") |>
-  mutate(across(c(mean, lower, upper, prob_positive), \(x) round(x, 2))) |>
-  knitr::kable()
-```
-
-With species as a random effect and abundance in the model, the honeybee
-has much less influence:
-
-- **Abundance → normalised degree** is strongly positive (about +0.4 per SD,
-  with or without the honeybee): abundant species have more partners
-  recorded. Abundance has no clear effect on d′, which is corrected for
-  partner frequency.
-- **Originality → normalised degree** is negative (about −0.3 to −0.4 per
-  SD). More original pollinators visit a smaller share of the plants at
-  their site, at equal abundance. The effect is a bit stronger once
-  abundance is accounted for: abundant species tend to be more original,
-  mostly because of the honeybee, which partly hid it. Without the honeybee
-  the estimate is similar, but its interval just includes 0 (P(β > 0) = 0.06).
-  In the pooled correlations, the honeybee's 18 rows at high originality and
-  high degree hid this effect entirely.
-- **Originality → d′** is positive in both fits (P(β > 0) ≈ 0.8–0.9), which
-  goes in the same direction: more original pollinators are more specialised.
-  The credible interval includes 0.
-- **Uniqueness** has no clear effect on either response. The pooled
-  correlation between uniqueness and degree (ρ = 0.26), similar to the
-  positive relationship reported by @Coux-etal-2016, came from the honeybee:
-  it is the most unique pollinator at 12 of its 18 sites.
-
-Overall, the data agree with the direction of the @Coux-etal-2016 result, but
-the effects are weak. The originality coefficients mix differences between
-species with differences within a species across sites; separating the two
-would need a within/between species decomposition.

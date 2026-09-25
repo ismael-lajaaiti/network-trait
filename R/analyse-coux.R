@@ -69,6 +69,28 @@ clean_coux_data <- function(data) {
   data
 }
 
+#' Remove an abundance record.
+#'
+#' Sets the abundance of `species` at `site` to 0, as Coux et al. (2016)
+#' did for *L. sordidum* at site `blabrolee` (3625 individuals, 4.5 times
+#' the next largest count). The species is then treated as absent from
+#' that site's trait-space community (originality, uniqueness) and drops
+#' out of the trait-network models, but its interactions stay in the
+#' network, so its partners' network metrics are unchanged.
+#'
+#' @param abundance data tibble of abundance per site, site as first
+#'   column.
+#' @param site site of the record to remove.
+#' @param species species (column) of the record to remove.
+#'
+#' @return `abundance`, with that record set to 0.
+#' @export
+remove_abundance_record <- function(abundance, site, species) {
+  stopifnot(site %in% abundance$site, species %in% names(abundance))
+  abundance[abundance$site == site, species] <- 0
+  abundance
+}
+
 #' Convert interaction table to interaction matrices.
 #'
 #' Pollinators as columns. Plants as rows. Grouped by site.
@@ -93,6 +115,35 @@ get_interaction_matrix <- function(interaction_table) {
   web_list
 }
 
+#' Compute Poisot's Shannon-based specificity (HS) per species.
+#'
+#' Reimplements `hs()` from the ESM package used by Coux et al. (2016):
+#' \deqn{HS_i = 1 - H_i / \log R}
+#' where \eqn{H_i} is the Shannon entropy of species \eqn{i}'s interactions
+#' across partners and \eqn{R} is the number of partners available (those
+#' with at least one interaction in the web). HS is 1 for a species
+#' interacting with a single partner and 0 for one spreading its
+#' interactions evenly over all available partners. ESM replaces zeros by
+#' 1e-12 before taking logs; here zero terms contribute exactly 0 (their
+#' limit), a difference of order 1e-10.
+#'
+#' @param web interaction matrix, with the focal guild as rows.
+#'
+#' @return named numeric vector of HS, one value per row of `web` with at
+#'   least one interaction.
+#' @export
+compute_hs <- function(web) {
+  web <- web[rowSums(web) > 0, colSums(web) > 0, drop = FALSE]
+  n_partners <- ncol(web)
+  apply(web, 1, function(links) {
+    if (n_partners == 1) {
+      return(1)
+    }
+    p <- links[links > 0] / sum(links)
+    1 - (-sum(p * log(p))) / log(n_partners)
+  })
+}
+
 #' Compute per-species network metrics
 #'
 #' Kept to four metrics, following Coux et al. (2016)'s supplementary
@@ -102,9 +153,8 @@ get_interaction_matrix <- function(interaction_table) {
 #' report) for structural embeddedness; Blüthgen's `d_prime`
 #' (null-model-corrected specialisation, deviation of a species'
 #' interaction distribution from random given partner interaction
-#' frequency) and `hs` (raw Shannon entropy of a species' interaction
-#' distribution, uncorrected for partner frequency -- `bipartite`'s
-#' "partner diversity") for specialisation/generality. Other
+#' frequency) and `hs` (Poisot's Shannon-based specificity, see
+#' `compute_hs()`, as used by Coux et al. 2016) for specialisation. Other
 #' `bipartite::specieslevel()` indices are dropped: centrality measures
 #' (betweenness, closeness) are unreliable on many of these networks ("too
 #' few nodes" on several sites), and the other specialisation indices
@@ -120,8 +170,9 @@ get_interaction_matrix <- function(interaction_table) {
 compute_network_metrics <- function(web_list) {
   lapply(web_list, function(web) {
     metrics <- web |> bipartite::specieslevel(
-      index = c("degree", "normalised degree", "d", "partner diversity")
+      index = c("degree", "normalised degree", "d")
     )
+    hs <- c(compute_hs(t(web)), compute_hs(web))
     rbind(
       metrics[[1]] |>
         tibble::rownames_to_column("species") |>
@@ -129,14 +180,13 @@ compute_network_metrics <- function(web_list) {
       metrics[[2]] |>
         tibble::rownames_to_column("species") |>
         dplyr::mutate(guild = "plant")
-    )
+    ) |>
+      dplyr::mutate(hs = unname(hs[species]))
   }) |>
     tibble::enframe() |>
     dplyr::rename(site = name) |>
     tidyr::unnest(value) |>
-    dplyr::rename(
-      normalised_degree = normalised.degree, d_prime = d, hs = partner.diversity
-    )
+    dplyr::rename(normalised_degree = normalised.degree, d_prime = d)
 }
 
 #' Type plant trait columns for Gower dissimilarity.
@@ -197,22 +247,50 @@ prepare_pollinator_traits <- function(pollinator_trait) {
     tibble::column_to_rownames("pollinator")
 }
 
+#' Weight traits so that each group of related columns counts as one trait.
+#'
+#' Follows Coux et al. (2016): every trait gets a weight of 1, except
+#' groups of columns that describe a single trait, whose columns share a
+#' weight of 1 (e.g. body length and body weight both measure body size,
+#' so each gets 1/2; the six larval-diet columns get 1/6 each).
+#'
+#' @param trait_table data frame of traits, one column per trait.
+#' @param groups named list of character vectors, each a set of column
+#'   names forming a single trait.
+#'
+#' @return numeric vector of weights, in the column order of
+#'   `trait_table`.
+#' @export
+get_trait_weights <- function(trait_table, groups = list()) {
+  weights <- stats::setNames(rep(1, ncol(trait_table)), names(trait_table))
+  for (group in groups) {
+    stopifnot(all(group %in% names(weights)))
+    weights[group] <- 1 / length(group)
+  }
+  unname(weights)
+}
+
 #' Compute Gower dissimilarity and PCoA ordination among species traits.
 #'
 #' Follows Coux et al. (2016): traits are standardised (z-scores for
 #' numeric traits, range-standardisation for the rest) and combined via
-#' Gower's (1971) coefficient (`FD::gowdis`), then ordinated with PCoA
-#' (`ape::pcoa`), with a Cailliez correction for negative eigenvalues.
+#' Gower's (1971) coefficient (`FD::gowdis`), with trait weights, then
+#' ordinated with PCoA (`ape::pcoa`), with a Cailliez correction for
+#' negative eigenvalues.
 #'
 #' @param trait_table data frame of traits, one row per species, typed by
 #'   `prepare_plant_traits()` or `prepare_pollinator_traits()`.
 #' @param asym.bin optional vector of column indices to treat as
 #'   asymmetric binary traits (see `FD::gowdis`).
+#' @param weights optional vector of trait weights, in the column order of
+#'   `trait_table`, e.g. from `get_trait_weights()`. Defaults to equal
+#'   weights.
 #'
 #' @return an `ape::pcoa` object.
 #' @export
-compute_trait_pcoa <- function(trait_table, asym.bin = NULL) {
-  dist <- FD::gowdis(trait_table, asym.bin = asym.bin)
+compute_trait_pcoa <- function(trait_table, asym.bin = NULL,
+                               weights = rep(1, ncol(trait_table))) {
+  dist <- FD::gowdis(trait_table, w = weights, asym.bin = asym.bin)
   ape::pcoa(dist, correction = "cailliez")
 }
 
@@ -585,16 +663,19 @@ read_pollinator_annotation <- function(path) {
 
 #' Assemble pollinator trait-position and network-position data per site.
 #'
-#' Joins originality, uniqueness, abundance and network metrics for
-#' pollinators, and adds `n_plants`, the number of plants in the site's
-#' web, which is the denominator of normalised degree. Predictors are
-#' standardised (`originality_z`, `uniqueness_z`, `log_abundance_z`) on the
-#' full data set, so that model coefficients stay comparable when a species
-#' is later excluded. Abundance is log-transformed: its effect on degree is
-#' mostly a sampling effect (the more individuals are seen, the more
-#' partners are recorded), expected to saturate.
+#' Joins unweighted and abundance-weighted originality, uniqueness,
+#' abundance and network metrics for pollinators, and adds `n_plants`, the
+#' number of plants in the site's web, which is the denominator of
+#' normalised degree. Predictors are standardised (`originality_z`,
+#' `originality_w_z`, `uniqueness_z`, `log_abundance_z`, `log_n_plants_z`)
+#' so that coefficients are comparable across models. Abundance is
+#' log-transformed: its effect on degree is mostly a sampling effect (the
+#' more individuals are seen, the more partners are recorded), expected to
+#' saturate. Plant richness is log-transformed too.
 #'
 #' @param originality data tibble from `compute_originality()`.
+#' @param originality_w data tibble from `compute_originality(weighted =
+#'   TRUE)`.
 #' @param uniqueness data tibble from `compute_uniqueness()`.
 #' @param net_metrics data tibble from `compute_network_metrics()`.
 #' @param abundance data tibble of pollinator abundance per site, site as
@@ -604,8 +685,9 @@ read_pollinator_annotation <- function(path) {
 #'
 #' @return data tibble with one row per pollinator and site.
 #' @export
-prepare_trait_network_data <- function(originality, uniqueness, net_metrics,
-                                       abundance, web_list) {
+prepare_trait_network_data <- function(originality, originality_w,
+                                       uniqueness, net_metrics, abundance,
+                                       web_list) {
   abundance <- abundance |>
     tidyr::pivot_longer(-site, names_to = "species", values_to = "abundance")
   n_plants <- tibble::tibble(
@@ -613,87 +695,94 @@ prepare_trait_network_data <- function(originality, uniqueness, net_metrics,
     n_plants = vapply(web_list, nrow, integer(1))
   )
   originality |>
+    dplyr::inner_join(
+      dplyr::rename(originality_w, originality_w = originality),
+      by = c("site", "species")
+    ) |>
     dplyr::inner_join(uniqueness, by = c("site", "species")) |>
     dplyr::inner_join(
       net_metrics |>
         dplyr::filter(guild == "pollinator") |>
-        dplyr::select(site, species, degree, normalised_degree, d_prime),
+        dplyr::select(site, species, degree, normalised_degree, hs),
       by = c("site", "species")
     ) |>
     dplyr::inner_join(abundance, by = c("site", "species")) |>
     dplyr::inner_join(n_plants, by = "site") |>
     dplyr::mutate(
       originality_z = as.numeric(scale(originality)),
+      originality_w_z = as.numeric(scale(originality_w)),
       uniqueness_z = as.numeric(scale(uniqueness)),
-      log_abundance_z = as.numeric(scale(log(abundance)))
+      log_abundance_z = as.numeric(scale(log(abundance))),
+      log_n_plants_z = as.numeric(scale(log(n_plants)))
     )
 }
 
 #' Fit a trait-position -> network-position mixed model with INLA.
 #'
-#' `response ~ originality_z + uniqueness_z + log_abundance_z + (1 | site)
-#' + (1 | species)`, with site and species as iid random effects under PC
-#' priors
-#' (P(sd > 1) = 0.01). The likelihood depends on the response:
+#' `response ~ predictors + (1 | site) + (1 | species)`, with site and
+#' species as iid random effects under PC priors (P(sd > 1) = 0.01). The
+#' likelihood depends on the response:
 #' - `"degree"`: binomial, a pollinator's degree out of the `n_plants`
 #'   plants of its site, i.e. normalised degree modelled on its own scale.
-#' - `"d_prime"`: beta. A third of d' values sit exactly at 0 or 1, which a
-#'   beta cannot take, so values within 0.01 of either bound are treated as
-#'   censored (`beta.censor.value`) instead of being squeezed inwards.
-#'   `cmin = 0` stabilises the Laplace approximation, which otherwise fails
-#'   to converge on this likelihood.
+#' - `"hs"`: Gaussian, as in the linear mixed models of Coux et al.
+#'   (2016). HS is 1 for every species with a single partner.
 #'
 #' @param data data tibble from `prepare_trait_network_data()`.
-#' @param response `"degree"` or `"d_prime"`.
+#' @param response `"degree"` or `"hs"`.
+#' @param predictors character vector of fixed-effect columns of `data`.
 #'
-#' @return an `inla` object.
+#' @return an `inla` object, with WAIC computed.
 #' @export
-fit_trait_network_model <- function(data, response = c("degree", "d_prime")) {
+fit_trait_network_model <- function(data, response = c("degree", "hs"),
+                                    predictors) {
   response <- match.arg(response)
   pc_prior <- list(prec = list(prior = "pc.prec", param = c(1, 0.01)))
   formula <- stats::as.formula(paste(
-    response,
-    "~ originality_z + uniqueness_z + log_abundance_z",
+    response, "~", paste(predictors, collapse = " + "),
     "+ f(site, model = 'iid', hyper = pc_prior)",
     "+ f(species, model = 'iid', hyper = pc_prior)"
   ))
   if (response == "degree") {
     INLA::inla(
       formula,
-      family = "binomial", Ntrials = data$n_plants, data = data
+      family = "binomial", Ntrials = data$n_plants, data = data,
+      control.compute = list(waic = TRUE)
     )
   } else {
-    data <- dplyr::filter(data, !is.na(d_prime))
     INLA::inla(
       formula,
-      family = "beta", data = data,
-      control.family = list(beta.censor.value = 0.01),
-      control.inla = list(cmin = 0)
+      family = "gaussian", data = data,
+      control.compute = list(waic = TRUE)
     )
   }
 }
 
-#' Fit trait -> network models with and without a focal species.
+#' Fit a set of trait -> network models and tidy their fixed effects.
 #'
-#' Fits `fit_trait_network_model()` for each response, on all pollinators
-#' and on all but `exclude`, and tidies the fixed effects.
+#' Fits `fit_trait_network_model()` for each response and each set of
+#' predictors in `models`. By default, compares the model of Coux et al.
+#' (2016), with abundance-weighted originality, to the same model with
+#' unweighted originality.
 #' `prob_positive` is the posterior probability that the coefficient is
 #' above 0.
 #'
 #' @param data data tibble from `prepare_trait_network_data()`.
-#' @param exclude species to drop in the sensitivity fit.
+#' @param models named list of predictor sets.
 #' @param responses responses passed to `fit_trait_network_model()`.
 #'
-#' @return data tibble with one row per response, data set and fixed
-#'   effect.
+#' @return data tibble with one row per response, model and fixed effect,
+#'   with the model's WAIC repeated on each row.
 #' @export
-compare_trait_network_models <- function(data, exclude = "a_mellifera",
-                                         responses = c("degree", "d_prime")) {
-  datasets <- list(data, dplyr::filter(data, !species %in% exclude))
-  names(datasets) <- c("all", paste("without", paste(exclude, collapse = ", ")))
-  grid <- tidyr::expand_grid(response = responses, dataset = names(datasets))
-  purrr::pmap(grid, function(response, dataset) {
-    fit <- fit_trait_network_model(datasets[[dataset]], response)
+compare_trait_network_models <- function(
+    data,
+    models = list(
+      `weighted originality` = c("originality_w_z", "log_abundance_z"),
+      originality = c("originality_z", "log_abundance_z")
+    ),
+    responses = c("degree", "hs")) {
+  grid <- tidyr::expand_grid(response = responses, model = names(models))
+  purrr::pmap(grid, function(response, model) {
+    fit <- fit_trait_network_model(data, response, models[[model]])
     prob_positive <- vapply(
       fit$marginals.fixed,
       function(m) 1 - INLA::inla.pmarginal(0, m),
@@ -702,9 +791,10 @@ compare_trait_network_models <- function(data, exclude = "a_mellifera",
     fit$summary.fixed |>
       tibble::as_tibble(rownames = "term") |>
       dplyr::transmute(
-        response = response, dataset = dataset, term,
+        response = response, model = model, term,
         mean, lower = `0.025quant`, upper = `0.975quant`,
-        prob_positive = prob_positive[term]
+        prob_positive = prob_positive[term],
+        waic = fit$waic$waic
       )
   }) |>
     dplyr::bind_rows()
