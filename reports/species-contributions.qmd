@@ -1,0 +1,311 @@
+---
+title: "Species contributions to robustness and functional diversity"
+bibliography: ../references.bib
+format:
+  html:
+    embed-resources: true
+    code-fold: true
+execute:
+    message: false
+    warning: false
+---
+
+```{r}
+#| output: false
+#| echo: false
+
+library(renv)
+renv::load()
+library(targets)
+library(here)
+tar_config_set(
+  store = here::here("_targets")
+)
+source(here::here("R", "analyse-coux.R"))
+source(here::here("R", "contributions.R"))
+source(here::here("R", "sem.R"))
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(bipartite)
+library(glmmTMB)
+library(piecewiseSEM)
+
+guild_colors <- c(pollinator = "#2a78d6", plant = "#eb6834")
+theme_set(theme_minimal(base_size = 11))
+```
+
+We measure what each pollinator contributes to its community, to later ask
+with a structural equation model how much of that contribution depends on
+its network role (normalised degree) and its position in trait space
+(originality). We measure each pollinator's contribution to:
+
+1. the **robustness** of the network;
+2. plant **functional diversity**.
+
+## Robustness
+
+Robustness $R$ is the area under the curve of the fraction of plants
+surviving as pollinators are removed one by one, a plant going extinct once
+all its pollinators are gone [@Memmott-Waser-Price-2004b]. We average it over
+1000 random removal orders. $R_i^\text{first}$ is the same average when
+pollinator $i$ is always removed first. The contribution of $i$ is
+
+$$\Delta R_i = R - R_i^\text{first}$$
+
+that is, how much less robust the network is when $i$ is lost first rather
+than an average pollinator (`compute_robustness_contributions()` in
+`R/contributions.R`).
+
+```{r}
+web_list <- tar_read(web_list)
+
+robustness_contributions <- tar_read(robustness_contributions) |>
+  left_join(
+    tar_read(net_metrics) |>
+      filter(guild == "pollinator") |>
+      select(site, species, normalised_degree),
+    by = join_by(site, species)
+  ) |>
+  group_by(site) |>
+  mutate(n_pollinators = n()) |>
+  ungroup() |>
+  mutate(n_plants = vapply(web_list, nrow, integer(1))[site]) |>
+  group_by(site) |>
+  mutate(cascade_relative = (cascade - mean(cascade)) / n_plants) |>
+  ungroup()
+
+spearman <- function(x, y) sprintf("%.2f", cor(x, y, method = "spearman"))
+```
+
+```{r}
+ggplot(robustness_contributions, aes(x = delta_r_first)) +
+  geom_histogram(
+    binwidth = 0.02, fill = guild_colors[["pollinator"]], color = "white"
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  labs(x = expression(Delta * R[i]), y = "Number of pollinator-site records")
+```
+
+**$\Delta R_i$ sums to zero within a site.** A random order can be drawn by
+picking the first pollinator (probability $1/n$ each) and shuffling the
+rest, so $R$ is the mean of the $R^\text{first}_i$:
+
+$$R = \frac{1}{n} \sum_i R^\text{first}_i
+\quad \Rightarrow \quad \sum_i \Delta R_i = 0$$
+
+We estimate $R$ this way, so the sum is exactly zero.
+$\Delta R_i$ is thus relative: how much more a pollinator matters than the
+others at its site. At two-pollinator sites, the two species get opposite
+values.
+
+```{r}
+robustness_contributions |>
+  filter(n_pollinators == 2) |>
+  select(site, species, cascade, delta_r_first) |>
+  mutate(delta_r_first = round(delta_r_first, 3)) |>
+  knitr::kable(col.names = c("site", "species", "cascade", "ΔR"))
+```
+
+**$\Delta R_i$ measures how much more plant species are lost after removing $i$
+removal, compared with an average pollinator removal.** Let $\text{c}_i$ be the
+number of plants whose only pollinator is $i$, $\bar c$ its site average and $P$
+the number of plants. When every plant has a single pollinator,
+
+$$\Delta R_i = \frac{1}{2} \cdot \frac{\text{c}_i - \bar c}{P}.$$
+
+```{r}
+ggplot(
+  robustness_contributions,
+  aes(x = cascade_relative, y = delta_r_first)
+) +
+  geom_abline(
+    slope = 0.5, intercept = 0, linetype = "dashed", color = "grey50"
+  ) +
+  geom_point(size = 2, alpha = 0.7, color = guild_colors[["pollinator"]]) +
+  labs(
+    x = "Relative cascade, (cascade - site mean) / plants",
+    y = expression(Delta * R[i])
+  )
+```
+
+$|\Delta R_i|$ is smaller at richer sites
+(ρ = `r spearman(abs(robustness_contributions$delta_r_first), robustness_contributions$n_pollinators)`
+with the number of pollinators). It reflects that richer networks are more
+robust to extinctions.
+
+**Link with normalised degree.** $\Delta R_i$ rises with normalised degree
+(ρ = `r spearman(robustness_contributions$delta_r_first, robustness_contributions$normalised_degree)`),
+as the degree → contribution path of the SEM expects.
+
+```{r}
+ggplot(
+  robustness_contributions,
+  aes(x = normalised_degree, y = delta_r_first)
+) +
+  geom_jitter(
+    width = 0.01, height = 0, alpha = 0.7, color = guild_colors[["pollinator"]]
+  ) +
+  labs(x = "Normalised degree", y = expression(Delta * R[i]))
+```
+
+## Contribution to functional diversity
+
+We measure plant functional diversity (FD) with a dendrogram
+[@Petchey-Gaston-2002]: an average-linkage (UPGMA) tree of the 14 plant
+species in trait space, the same space as for originality. The FD of a set
+of plants is the total length of the branches connecting them, so a single
+plant has FD = 0. We build one tree for all sites, so branch lengths are
+comparable between sites.
+
+Below, *P. marginata* is the only pollinator of *Lolium* at `daiburnam`.
+Losing it costs a third of the plants but half of the FD, because *Lolium*
+sits alone on a long branch.
+
+```{r}
+#| fig-width: 10
+#| fig-height: 4.5
+plot_fd_removal(tar_read(plant_fd_tree), web_list[["daiburnam"]], "p_marginata")
+```
+
+We then repeat the robustness calculation with the fraction of the site's
+plant FD retained instead of the fraction of plants alive. $\Delta FD_i$ is
+defined like $\Delta R_i$, with the same removal orders
+(`compute_fd_contributions()` in `R/contributions.R`). It also sums to zero
+within a site.
+
+```{r}
+contributions <- robustness_contributions |>
+  left_join(tar_read(fd_contributions), by = join_by(site, species))
+fd_fit <- lm(delta_fd_first ~ delta_r_first, contributions)
+contributions <- contributions |>
+  mutate(fd_residual = resid(fd_fit))
+```
+
+A pollinator removes FD only through the plants it alone visits, so
+$\Delta FD_i$ closely follows $\Delta R_i$
+(R² = `r sprintf("%.2f", summary(fd_fit)$r.squared)`,
+slope = `r sprintf("%.2f", coef(fd_fit)[[2]])`; dashed line 1:1 below).
+The slope is above 1 because the last plant has FD = 0, so FD falls
+faster than the number of plants. We use the residual of the regression,
+rather than the raw difference $\Delta FD_i - \Delta R_i$, so that it does
+not depend on $\Delta R_i$. It is positive when the plants $i$ supports are
+functionally distinct, and negative when they have functional equivalents
+at the site.
+
+```{r}
+ggplot(contributions, aes(x = delta_r_first, y = delta_fd_first)) +
+  geom_abline(
+    slope = 1, intercept = 0, linetype = "dashed", color = "grey50"
+  ) +
+  geom_point(size = 2, alpha = 0.7, color = guild_colors[["pollinator"]]) +
+  labs(x = expression(Delta * R[i]), y = expression(Delta * FD[i]))
+```
+
+**What explains the residual?** The residual sums to zero within a site, so
+we correlate it with each candidate after subtracting the site mean. The
+candidates are the pollinator's traits and network role, and the plants it
+supports (`compute_plant_support()`). Excess FD loss is the share of the
+site's FD lost with the plants $i$ alone visits, minus the share of plants
+lost.
+
+```{r}
+residual_check <- contributions |>
+  left_join(tar_read(plant_support), by = join_by(site, species)) |>
+  left_join(
+    tar_read(pollinator_trait_network) |>
+      select(
+        site, species, originality, originality_w, uniqueness, hs,
+        abundance
+      ),
+    by = join_by(site, species)
+  ) |>
+  mutate(log_abundance = log(abundance))
+
+candidates <- c(
+  "Originality" = "originality",
+  "Weighted originality" = "originality_w",
+  "Uniqueness" = "uniqueness",
+  "Normalised degree" = "normalised_degree",
+  "HS" = "hs",
+  "Abundance (log)" = "log_abundance",
+  "Uniqueness of plants visited" = "partner_uniqueness",
+  "Uniqueness of plants only it visits" = "sole_uniqueness",
+  "Excess FD loss" = "excess_fd_loss"
+)
+
+residual_check |>
+  group_by(site) |>
+  mutate(across(all_of(unname(candidates)), \(x) x - mean(x, na.rm = TRUE))) |>
+  ungroup() |>
+  select(fd_residual, all_of(candidates)) |>
+  pivot_longer(-fd_residual, names_to = "candidate") |>
+  filter(!is.na(value), !is.na(fd_residual)) |>
+  group_by(candidate = factor(candidate, names(candidates))) |>
+  summarise(
+    n = n(),
+    rho = cor(fd_residual, value, method = "spearman"),
+    p = cor.test(fd_residual, value, method = "spearman", exact = FALSE)$p.value
+  ) |>
+  mutate(across(c(rho, p), \(x) round(x, 3))) |>
+  knitr::kable(col.names = c("Candidate", "n", "ρ", "p"))
+```
+
+None of the pollinator's own traits, nor its network role or abundance,
+predicts the residual. The traits of the plants it supports do: the residual
+is high when the plants a pollinator alone visits are functionally unique.
+Only pollinators with at least one such plant have a value for that
+candidate (n = 42). Excess FD loss is close to a restatement of the
+residual rather than an explanation of it. Among the explanatory candidates
+defined for all pollinators, the uniqueness of the plants visited is the
+best.
+
+## Structural equation model
+
+We ask how a pollinator's position in trait space (originality) and its
+network role (normalised degree) shape its contributions, with two paths:
+
+1. originality → normalised degree → $\Delta R_i$ → $\Delta FD_i$;
+2. originality → uniqueness of the plants visited → $\Delta FD_i$.
+
+Since $\Delta R_i$ is in the $\Delta FD_i$ equation, the second path acts on
+the part of $\Delta FD_i$ that $\Delta R_i$ does not explain, i.e. the
+residual above. We fit a piecewise SEM [@Lefcheck-2016], with one
+`glmmTMB` mixed model per response: binomial for normalised degree,
+Gaussian otherwise, with random effects of site and species unless their
+variance is zero (`fit_contribution_sem()` in `R/sem.R`).
+
+```{r}
+sem_summary <- summary(tar_read(contribution_sem), .progressBar = FALSE)
+sem_coefs <- sem_summary$coefficients
+sem_p <- function(response, predictor) {
+  p <- sem_coefs$P.Value[
+    sem_coefs$Response == response & sem_coefs$Predictor == predictor
+  ]
+  sprintf("%.2f", p)
+}
+```
+
+```{r}
+#| fig-width: 8
+#| fig-height: 4.5
+plot_sem_paths(tar_read(contribution_sem))
+```
+
+Arrows show standardised coefficients (`plot_sem_paths()` in `R/sem.R`).
+The model fits: no missing path is needed (Fisher's C =
+`r sprintf("%.1f", sem_summary$Cstat$Fisher.C)`, df =
+`r sem_summary$Cstat$df`, p = `r sprintf("%.2f", sem_summary$Cstat$P.Value)`).
+
+- **Traits do not predict network role.** Originality has no clear effect
+  on normalised degree (p = `r sem_p("normalised_degree", "originality_z")`).
+- **Network role drives the contribution to robustness**, and through it
+  most of the contribution to plant FD.
+- **Traits act on plant FD through the plants visited.** Original
+  pollinators visit less unique plants
+  (p = `r sem_p("partner_uniqueness", "originality_z")`), and visiting
+  unique plants raises $\Delta FD_i$ beyond what $\Delta R_i$ predicts.
+
+The last link came out of an exploratory search among candidates, and it
+weakens without *A. mellifera*, which sits at the extreme of most axes. We
+return to its role in the discussion.

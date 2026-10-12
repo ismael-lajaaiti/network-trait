@@ -2,6 +2,8 @@ library(targets)
 library(tarchetypes)
 source(here::here("R", "analyse-coux.R"))
 source(here::here("R", "utils.R"))
+source(here::here("R", "contributions.R"))
+source(here::here("R", "sem.R"))
 tar_option_set(
   packages = c(
     "ggplot2",
@@ -9,7 +11,8 @@ tar_option_set(
     "dplyr",
     "tidyr",
     "rdryad",
-    "INLA"
+    "INLA",
+    "glmmTMB"
   )
 )
 
@@ -32,6 +35,12 @@ list(
   tar_quarto(
     report_coux,
     "reports/explore-coux2016.qmd",
+    quarto_args = c("--embed-resources"),
+    quiet = TRUE
+  ),
+  tar_quarto(
+    report_contributions,
+    "reports/species-contributions.qmd",
     quarto_args = c("--embed-resources"),
     quiet = TRUE
   ),
@@ -149,6 +158,27 @@ list(
     trait_network_models,
     compare_trait_network_models(pollinator_trait_network)
   ),
+  tar_target(
+    robustness_contributions,
+    compute_robustness_contributions(web_list)
+  ),
+  tar_target(plant_fd_tree, build_fd_tree(plant_trait_pcoa)),
+  tar_target(
+    fd_contributions,
+    compute_fd_contributions(web_list, plant_fd_tree)
+  ),
+  tar_target(
+    plant_support,
+    compute_plant_support(web_list, plant_fd_tree, plant_uniqueness)
+  ),
+  tar_target(
+    sem_data,
+    prepare_sem_data(
+      pollinator_trait_network, robustness_contributions, fd_contributions,
+      plant_support
+    )
+  ),
+  tar_target(contribution_sem, fit_contribution_sem(sem_data)),
   tar_target(
     trait_network_models_richness,
     compare_trait_network_models(

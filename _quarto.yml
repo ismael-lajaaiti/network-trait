@@ -4,6 +4,7 @@ project:
     - index.qmd
     - reports/index.qmd
     - reports/explore-coux2016.qmd
+    - reports/species-contributions.qmd
     - output/manuscript.qmd
   output-dir: docs
 
