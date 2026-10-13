@@ -5,6 +5,7 @@ project:
     - reports/index.qmd
     - reports/explore-coux2016.qmd
     - reports/species-contributions.qmd
+    - reports/trait-matching-model.qmd
     - output/manuscript.qmd
   output-dir: docs
 

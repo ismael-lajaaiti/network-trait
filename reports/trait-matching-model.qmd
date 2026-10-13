@@ -1,0 +1,252 @@
+---
+title: "Trait-matching model"
+bibliography: ../references.bib
+format:
+  html:
+    embed-resources: true
+    code-fold: true
+execute:
+    message: false
+    warning: false
+---
+
+```{r}
+#| output: false
+#| echo: false
+
+library(renv)
+renv::load()
+library(targets)
+library(here)
+tar_config_set(
+  store = here::here("_targets")
+)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(glmmTMB)
+library(piecewiseSEM)
+source(here::here("R", "contributions.R"))
+source(here::here("R", "sem.R"))
+source(here::here("R", "simulation.R"))
+
+theme_set(theme_minimal(base_size = 11))
+```
+
+We ask how a pollinator's traits shape its contribution to plant
+functional diversity, going through the network. The question sits on two
+axes, trait space vs network and pollinator vs plant, which the SEM of
+[Species contributions](species-contributions.html) makes explicit. In the
+Coux data, the network row of that SEM works but the trait row does not.
+Is that what trait matching predicts? We build a minimal trait-matching
+model, fit the same SEM to simulated networks, and ask how its paths vary
+with the strength of trait matching, with richness, and with the link
+between a species' breadth and its position.
+
+## Model
+
+Plants and pollinators sit in a shared space of two traits, each drawn from
+a standard normal. Each species also has a niche breadth $\sigma$,
+log-normal within its guild. A plant $i$ and a pollinator $j$ interact in
+proportion to the overlap of their Gaussian niches, which decreases with
+their trait distance $d_{ij}$:
+
+$$w_{ij} = (1 - \lambda) \frac{e^{-d_{ij}^2 / 2(\sigma_i^2 + \sigma_j^2)}}{\bar w} + \lambda$$
+
+where $\lambda$ is the share of interactions independent of traits:
+$\lambda = 0$ is pure trait matching, $\lambda = 1$ a random network. This
+is the trait-matching ("complementarity") rule of mutualistic network
+models, with a niche breadth for both guilds. Within each guild, log
+breadth is correlated with the distance to the guild's centroid with
+coefficient $\rho$: peripheral species are generalists if $\rho > 0$,
+specialists if $\rho < 0$. Links are drawn with probabilities proportional
+to $w_{ij}$, scaled so that each plant has 2 pollinators on average. A
+species left without a partner gets its most likely one. As in Coux, there
+are about 0.65 pollinators per plant and plants have 2 pollinators on
+average (`simulate_network()` in `R/simulation.R`).
+
+Below, a network under pure trait matching ($\rho = 0$): plants (orange
+squares, sized by breadth) and pollinators (blue dots), with links in grey.
+Three pollinators are highlighted, with the narrowest, the median and the
+widest niche (circle of radius $\sigma_j$). Broad plants are reached from
+further away.
+
+```{r}
+#| fig-width: 7
+#| fig-height: 5
+plot_simulated_network(tar_read(sim_example))
+```
+
+## Breadth, position and contributions
+
+As in Coux:
+
+- **breadth** is the niche breadth $\sigma$ (log scale): the pollinator's,
+  and the mean of the plants it visits;
+- **position** is originality, the distance to the centroid of the
+  species' own guild in trait space: the pollinator's, and the mean of the
+  plants it visits;
+- $\Delta R_i$ and $\Delta FD_i$ are computed as in Coux, with plant FD
+  from an average-linkage dendrogram of plant traits and 50 random removal
+  orders (`simulate_pollinator_data()`).
+
+We simulate 30 networks for each combination of
+$\lambda \in \{0, 0.25, 0.5, 0.75, 1\}$,
+$\rho \in \{-0.5, 0, 0.5\}$ and 5, 10, 15 or 20 plants (3, 6, 10 and 13
+pollinators), the size of the Coux networks.
+
+**Why originality for position.** Plant uniqueness (distance to the nearest
+plant) explains $\Delta FD_i$ beyond $\Delta R_i$ slightly better than
+plant originality, but originality carries the matching between pollinator
+and plant positions far better, because the distance to a centroid is less
+noisy than the distance to a single neighbour. Under trait matching
+($\lambda = 0$, $\rho = 0$), median Spearman correlations across networks:
+
+```{r}
+tar_read(sim_position_metrics) |>
+  filter(lambda == 0, rho == 0) |>
+  group_by(n_plants, metric) |>
+  summarise(across(c(matching, fd), median), .groups = "drop") |>
+  mutate(chain = matching * fd) |>
+  pivot_wider(names_from = metric, values_from = c(matching, fd, chain)) |>
+  mutate(across(-n_plants, \(x) round(x, 2))) |>
+  select(n_plants, matching_originality, matching_uniqueness,
+         fd_originality, fd_uniqueness, chain_originality, chain_uniqueness) |>
+  knitr::kable(col.names = c(
+    "Plants", "Matching: originality", "Matching: uniqueness",
+    "ΔFD: originality", "ΔFD: uniqueness",
+    "Chain: originality", "Chain: uniqueness"
+  ))
+```
+
+"Matching" is the correlation between a pollinator's position and that of
+the plants it visits; "ΔFD" between the plants' position and the residual
+of $\Delta FD_i$ on $\Delta R_i$; "chain" is their product.
+
+## The grid SEM in the model
+
+We fit the Coux SEM to batches of 15 simulated networks, like the Coux
+sites, with a site random effect (`fit_simulated_sem()`). Below, one batch
+under pure trait matching ($\lambda = 0$, $\rho = 0$, 20 plants).
+
+```{r}
+sem_example <- tar_read(sim_sem_example)
+example_summary <- summarise_contribution_sem(sem_example$sem, sem_example$data)
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 5.5
+plot_sem_paths(sem_example$sem, sem_example$data)
+```
+
+Every path along the two axes is present: breadth and position set degree
+(down, pollinator), narrow pollinators reach broad plants and peripheral
+ones peripheral plants (across, trait space), degree sets how many plants
+depend on the pollinator (across, network), and narrow or peripheral plants
+depend more on their pollinators (down, plant). With
+`r nrow(sem_example$data)` pollinators, the tests still detect smaller
+paths across the axes (Fisher's C =
+`r sprintf("%.1f", example_summary$Cstat$Fisher.C)`, df =
+`r example_summary$Cstat$df`,
+p = `r format.pval(example_summary$Cstat$P.Value, digits = 2)`; see below).
+
+**How the paths vary with trait matching and richness** ($\rho = 0$; each
+setting gives two SEMs; dashed lines show the Coux estimates):
+
+```{r}
+sim_sems <- tar_read(sim_sems)
+failed <- if ("error" %in% names(sim_sems)) sum(!is.na(sim_sems$error)) else 0
+sim_sems <- filter(sim_sems, !is.na(path))
+coux <- tar_read(contribution_sem_summary)
+sim_mean <- function(p, lam = 0, r = 0, plants = NULL) {
+  keep <- sim_sems$path == p & sim_sems$lambda %in% lam & sim_sems$rho %in% r
+  if (!is.null(plants)) keep <- keep & sim_sems$n_plants %in% plants
+  sprintf("%.2f", mean(sim_sems$std[keep]))
+}
+coux_std <- function(p) {
+  co <- coux$coefficients
+  sprintf("%.2f", co$Std.Estimate[paste(co$Predictor, "->", co$Response) == p])
+}
+fits <- distinct(sim_sems, n_plants, lambda, rho, batch, fisher_p, missing)
+```
+
+```{r}
+#| fig-width: 12
+#| fig-height: 7
+plot_simulated_sems(sim_sems, coux$coefficients, colour_by = "n_plants")
+```
+
+- **Every trait path needs trait matching.** All paths from traits fade to
+  zero as interactions become random (e.g. breadth → degree, from
+  `r sim_mean("breadth_z -> normalised_degree", 0)` at $\lambda = 0$ to
+  `r sim_mean("breadth_z -> normalised_degree", 1)` at $\lambda = 1$). The
+  network row (degree → $\Delta R_i$ → $\Delta FD_i$) and plant position →
+  $\Delta FD_i$ hold at any $\lambda$: they follow from how the
+  contributions are built.
+- **Breadth paths have the signs of niche overlap.** Narrow pollinators
+  reach broad plants (breadth → plant breadth,
+  `r sim_mean("breadth_z -> partner_breadth", 0)`), and pollinators visiting
+  narrow plants contribute more to robustness (plant breadth →
+  $\Delta R_i$, `r sim_mean("partner_breadth -> delta_r", 0)`): narrow
+  plants depend more on each pollinator.
+- **Position needs richness, breadth does not.** Position → plant position
+  rises from `r sim_mean("originality_z -> partner_originality", 0, 0, 5)`
+  with 5 plants to
+  `r sim_mean("originality_z -> partner_originality", 0, 0, 20)` with 20, as
+  positions are estimated from more species; breadth paths barely change.
+
+**How the paths vary with the breadth-position correlation** (averaged
+over richness):
+
+```{r}
+#| fig-width: 12
+#| fig-height: 7
+plot_simulated_sems(sim_sems, coux$coefficients, colour_by = "rho")
+```
+
+- **When peripheral species are specialists ($\rho < 0$), position
+  matching vanishes** (position → plant position,
+  `r sim_mean("originality_z -> partner_originality", 0, -0.5)` at
+  $\lambda = 0$, against `r sim_mean("originality_z -> partner_originality", 0, 0)`
+  at $\rho = 0$): a peripheral specialist only reaches the few plants next
+  to it, which need not be peripheral themselves.
+- **$\rho$ sets the breadth-position correlation of the plants visited**,
+  which the SEM absorbs as correlated errors; the other paths change
+  little.
+
+**Coux against the model.** Coux matches the model under trait matching on
+the pollinator column and the network row: breadth → degree
+(`r coux_std("breadth_z -> normalised_degree")`; model at $\lambda = 0$:
+`r sim_mean("breadth_z -> normalised_degree", 0)`), position → degree
+(`r coux_std("originality_z -> normalised_degree")`;
+`r sim_mean("originality_z -> normalised_degree", 0)`), and a stronger
+network row. It departs on the trait row and the plant column. Position → plant position
+(`r coux_std("originality_z -> partner_originality")`) is what the model
+gives without trait matching ($\lambda = 1$:
+`r sim_mean("originality_z -> partner_originality", 1)`). The two
+plant-breadth paths are weak and positive where the model has them
+negative: breadth → plant breadth `r coux_std("breadth_z -> partner_breadth")`
+(model `r sim_mean("breadth_z -> partner_breadth", 0)`) and plant breadth →
+$\Delta R_i$ `r coux_std("partner_breadth -> delta_r")` (model
+`r sim_mean("partner_breadth -> delta_r", 0)`). The Coux pollinator traits
+behave as trait matching predicts; the plant traits we used (inflorescence
+symmetry for breadth, the full trait table for position) do not.
+
+**Missing paths.** With hundreds of pollinators per SEM, the d-separation
+tests reject `r sum(fits$fisher_p < 0.05)` of `r nrow(fits)` simulated SEMs,
+more often in richer networks`r if (failed > 0) paste0(" (", failed, " more failed to converge)") else ""`. The
+paths they flag cross the two axes:
+
+```{r}
+tibble(path = unlist(strsplit(fits$missing, "; "))) |>
+  filter(path != "") |>
+  count(path, sort = TRUE) |>
+  head(6) |>
+  knitr::kable(col.names = c("Missing path", paste("SEMs flagging it, out of", nrow(fits))))
+```
+
+The most frequent, degree → breadth of the plants visited, is a mechanical
+effect: a pollinator with many partners visits plants of average breadth.
+These paths are small, and Coux, with 89 records, has little power to
+detect them.

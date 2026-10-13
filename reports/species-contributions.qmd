@@ -262,50 +262,135 @@ best.
 
 ## Structural equation model
 
-We ask how a pollinator's position in trait space (originality) and its
-network role (normalised degree) shape its contributions, with two paths:
+We ask how a pollinator's traits shape its contribution to plant FD by
+going through the network. The variables sit on two axes, **trait space vs
+network** and **pollinator vs plant**:
 
-1. originality → normalised degree → $\Delta R_i$ → $\Delta FD_i$;
-2. originality → uniqueness of the plants visited → $\Delta FD_i$.
+|                 | Pollinator                    | Plant                                         |
+|-----------------|-------------------------------|-----------------------------------------------|
+| **Trait space** | breadth, position             | breadth and position of the plants visited     |
+| **Network**     | normalised degree             | $\Delta R_i$: the plants that depend on $i$   |
 
-Since $\Delta R_i$ is in the $\Delta FD_i$ equation, the second path acts on
-the part of $\Delta FD_i$ that $\Delta R_i$ does not explain, i.e. the
-residual above. We fit a piecewise SEM [@Lefcheck-2016], with one
-`glmmTMB` mixed model per response: binomial for normalised degree,
-Gaussian otherwise, with random effects of site and species unless their
-variance is zero (`fit_contribution_sem()` in `R/sem.R`).
+with $\Delta FD_i$ as the outcome: how many plants depend on $i$
+($\Delta R_i$), and which ones (their position). Paths only run along an
+axis:
+
+- **down** (traits set network roles): a broad pollinator meets more
+  plants, a peripheral one fewer; a narrow or peripheral plant has fewer
+  pollinators, so it depends more on each;
+- **across** (pollinators shape plants): a peripheral pollinator visits
+  peripheral plants (trait matching); a narrow pollinator can only reach
+  broad plants; the degree of a pollinator sets how many plants depend on
+  it.
+
+This structure follows from a trait-matching model in which plants and
+pollinators interact when their niches overlap
+([Trait-matching model](trait-matching-model.html)).
+
+We take every trait from the Coux trait tables. **Breadth** is a single
+trait per guild, chosen *a priori* as the classic marker of generalism:
+
+- **pollinators: sociality.** Social bees maintain colonies over a long
+  season, so they forage across many flowering periods and collect from
+  whatever flowers are open. Only *A. mellifera* and *B. terrestris* are
+  social, so pollinator breadth here cannot be separated from these two
+  species. Sociality also predicts normalised degree in these data, while
+  body size, the other candidate (larger pollinators forage further), does
+  not;
+- **plants: inflorescence symmetry.** Radially symmetric (actinomorphic)
+  inflorescences are open to many pollinators, whereas bilaterally
+  symmetric (zygomorphic) ones restrict access to pollinators of matching
+  shape and behaviour, the textbook marker of specialised pollination. We
+  use the inflorescence, the unit pollinators land on, rather than the
+  single flower: the heads of *Taraxacum*, *Cirsium* or *Trifolium* are
+  made of zygomorphic florets but are open, radially symmetric resources.
+
+Breadth could instead be measured from the interactions, as the trait
+diversity of a species' partners. In these sparse networks this mostly
+measures degree: a species with a single partner has zero breadth, which
+is the case for a third of the pollinator records and half of the plants.
+Measured at the other sites, to break this circularity, it does not
+predict degree. **Position** is originality, for both guilds: the
+pollinator's, and the mean of the plants it visits. Plant uniqueness
+explains $\Delta FD_i$ slightly better (see above), but in the model
+originality carries the link between pollinator and plant positions far
+better.
+
+We fit a piecewise SEM [@Lefcheck-2016], with one `glmmTMB` mixed model
+per response: binomial for normalised degree, Gaussian otherwise, with
+random effects of site and species, and correlated errors between the
+breadth and position of the plants visited (`fit_grid_sem()` in
+`R/sem.R`).
 
 ```{r}
-sem_summary <- summary(tar_read(contribution_sem), .progressBar = FALSE)
+sem_data <- tar_read(sem_data)
+sem_summary <- tar_read(contribution_sem_summary)
 sem_coefs <- sem_summary$coefficients
-sem_p <- function(response, predictor) {
-  p <- sem_coefs$P.Value[
-    sem_coefs$Response == response & sem_coefs$Predictor == predictor
-  ]
-  sprintf("%.2f", p)
+sem_est <- function(response, predictor) {
+  row <- sem_coefs$Response == response & sem_coefs$Predictor == predictor
+  p <- sem_coefs$P.Value[row]
+  sprintf(
+    "%+.2f, %s", sem_coefs$Std.Estimate[row],
+    if (p < 0.001) "p < 0.001" else sprintf("p = %.3f", p)
+  )
+}
+
+missing <- sem_summary$dTable
+missing_p <- function(claim) {
+  sprintf("%.2f", missing$P.Value[startsWith(missing$Independ.Claim, claim)])
 }
 ```
 
 ```{r}
-#| fig-width: 8
-#| fig-height: 4.5
-plot_sem_paths(tar_read(contribution_sem))
+#| fig-width: 10
+#| fig-height: 5.5
+plot_sem_paths(
+  tar_read(contribution_sem), sem_data,
+  breadth_label = "Sociality", plant_breadth_label = "Open inflorescences\nvisited"
+)
 ```
 
-Arrows show standardised coefficients (`plot_sem_paths()` in `R/sem.R`).
-The model fits: no missing path is needed (Fisher's C =
-`r sprintf("%.1f", sem_summary$Cstat$Fisher.C)`, df =
-`r sem_summary$Cstat$df`, p = `r sprintf("%.2f", sem_summary$Cstat$P.Value)`).
+Arrows show standardised coefficients (`plot_sem_paths()` in `R/sem.R`;
+`r nrow(sem_data)` records, `r n_distinct(sem_data$species)` species). The
+model fits (Fisher's C = `r sprintf("%.1f", sem_summary$Cstat$Fisher.C)`,
+df = `r sem_summary$Cstat$df`,
+p = `r sprintf("%.2f", sem_summary$Cstat$P.Value)`).
 
-- **Traits do not predict network role.** Originality has no clear effect
-  on normalised degree (p = `r sem_p("normalised_degree", "originality_z")`).
-- **Network role drives the contribution to robustness**, and through it
-  most of the contribution to plant FD.
-- **Traits act on plant FD through the plants visited.** Original
-  pollinators visit less unique plants
-  (p = `r sem_p("partner_uniqueness", "originality_z")`), and visiting
-  unique plants raises $\Delta FD_i$ beyond what $\Delta R_i$ predicts.
+- **The network row works.** Social pollinators have a higher normalised
+  degree (`r sem_est("normalised_degree", "breadth_z")`), and degree sets
+  how many plants depend on a pollinator
+  (`r sem_est("delta_r", "normalised_degree")`), which carries most of
+  $\Delta FD_i$ (`r sem_est("delta_fd", "delta_r")`). Original pollinators
+  tend to have a lower degree
+  (`r sem_est("normalised_degree", "originality_z")`), as in the model.
+- **The trait row fails.** Original pollinators do not visit original
+  plants (`r sem_est("partner_originality", "originality_z")`), and social
+  pollinators do not visit more open inflorescences
+  (`r sem_est("partner_breadth", "breadth_z")`), whereas in the model
+  narrow pollinators reach broad plants.
+- **The plant column is weak.** Visiting original plants raises
+  $\Delta FD_i$ beyond $\Delta R_i$
+  (`r sem_est("delta_fd", "partner_originality")`), but the breadth of the
+  plants visited does not change $\Delta R_i$
+  (`r sem_est("delta_r", "partner_breadth")`), whereas in the model narrow
+  plants depend more on their pollinators.
 
-The last link came out of an exploratory search among candidates, and it
-weakens without *A. mellifera*, which sits at the extreme of most axes. We
-return to its role in the discussion.
+One missing path is flagged, a direct, negative link from pollinator
+originality to $\Delta FD_i$ (p = `r missing_p("delta_fd ~ originality_z")`):
+original pollinators contribute less to plant FD than their $\Delta R_i$
+and plants predict. *A. mellifera* and *B. terrestris* are both the most
+original and the only social pollinators, and they concentrate on common
+plant types.
+
+**Why the trait row fails.** The position argument needs a trait space
+shared by plants and pollinators, in which distance means "likely to
+interact". The Coux traits describe each guild on its own (body size,
+diet, sociality; growth form, inflorescence, flowering season), and none
+were collected as matching pairs, such as tongue length and corolla depth.
+Pairing every pollinator trait with every plant trait, none predicts which
+pairs interact beyond chance (132 combinations, smallest adjusted
+p = 0.80). Phenology is the only dimension both guilds share, but each
+network was sampled within one flowering window, so it cannot show
+matching. Testing position thus requires matching traits measured on both
+guilds. With 16 species, two of them introduced social bees at the extreme
+of most axes, these data also have little power.

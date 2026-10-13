@@ -241,24 +241,28 @@ compute_fd_contributions <- function(web_list, tree, nrep = 1000, seed = 1) {
 #' @param tree plant functional dendrogram, from `build_fd_tree()`.
 #' @param plant_uniqueness plant uniqueness per site, as returned by
 #'   `compute_uniqueness()`.
+#' @param plant_originality plant originality per site, as returned by
+#'   `compute_originality()`.
 #'
 #' @return data tibble with one row per pollinator and site:
 #'   `plant_loss` and `fd_loss`, the share of the site's plants and of its
 #'   plant FD lost with the plants \eqn{i} alone visits; `excess_fd_loss`,
 #'   their difference; `sole_uniqueness` and `partner_uniqueness`, the mean
 #'   uniqueness of the plants \eqn{i} alone visits (`NA` if none) and of
+#'   all plants it visits; `partner_originality`, the mean originality of
 #'   all plants it visits.
 #' @export
-compute_plant_support <- function(web_list, tree, plant_uniqueness) {
+compute_plant_support <- function(web_list, tree, plant_uniqueness,
+                                  plant_originality) {
   membership <- get_edge_membership(tree)
   fd <- function(species) {
     present <- matrix(tree$tip.label %in% species, ncol = 1)
     compute_dendrogram_fd(membership, tree$edge.length, present)
   }
-  mean_uniqueness <- function(s, species) {
+  site_mean <- function(metric, value, s, species) {
     if (length(species) == 0) return(NA_real_)
-    keep <- plant_uniqueness$site == s & plant_uniqueness$species %in% species
-    mean(plant_uniqueness$uniqueness[keep])
+    keep <- metric$site == s & metric$species %in% species
+    mean(metric[[value]][keep])
   }
   lapply(names(web_list), function(s) {
     links <- web_list[[s]] > 0
@@ -270,8 +274,13 @@ compute_plant_support <- function(web_list, tree, plant_uniqueness) {
         species = sp,
         plant_loss = length(sole) / length(plants),
         fd_loss = 1 - fd(setdiff(plants, sole)) / fd(plants),
-        sole_uniqueness = mean_uniqueness(s, sole),
-        partner_uniqueness = mean_uniqueness(s, plants[links[, sp]])
+        sole_uniqueness = site_mean(plant_uniqueness, "uniqueness", s, sole),
+        partner_uniqueness = site_mean(
+          plant_uniqueness, "uniqueness", s, plants[links[, sp]]
+        ),
+        partner_originality = site_mean(
+          plant_originality, "originality", s, plants[links[, sp]]
+        )
       )
     }) |>
       dplyr::bind_rows()

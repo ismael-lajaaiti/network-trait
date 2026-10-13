@@ -8,3 +8,4 @@ We list below reports associated to the project:
 
 - [Explore data from @Coux-etal-2016](explore-coux2016.html)
 - [Species contributions to robustness and functional diversity](species-contributions.html)
+- [Trait-matching model](trait-matching-model.html)

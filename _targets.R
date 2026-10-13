@@ -4,6 +4,8 @@ source(here::here("R", "analyse-coux.R"))
 source(here::here("R", "utils.R"))
 source(here::here("R", "contributions.R"))
 source(here::here("R", "sem.R"))
+source(here::here("R", "gbif.R"))
+source(here::here("R", "simulation.R"))
 tar_option_set(
   packages = c(
     "ggplot2",
@@ -41,6 +43,12 @@ list(
   tar_quarto(
     report_contributions,
     "reports/species-contributions.qmd",
+    quarto_args = c("--embed-resources"),
+    quiet = TRUE
+  ),
+  tar_quarto(
+    report_model,
+    "reports/trait-matching-model.qmd",
     quarto_args = c("--embed-resources"),
     quiet = TRUE
   ),
@@ -169,16 +177,37 @@ list(
   ),
   tar_target(
     plant_support,
-    compute_plant_support(web_list, plant_fd_tree, plant_uniqueness)
+    compute_plant_support(
+      web_list, plant_fd_tree, plant_uniqueness, plant_originality
+    )
   ),
+  tar_target(
+    gbif_months_file,
+    "data/raw/gbif/pollinator_months_nz.csv",
+    format = "file"
+  ),
+  tar_target(gbif_months, read.csv(gbif_months_file)),
+  tar_target(
+    pollinator_breadth,
+    compute_phenological_breadth(gbif_months, n = 10)
+  ),
+  tar_target(
+    pollinator_social_breadth,
+    get_social_breadth(pollinator_trait_ready)
+  ),
+  tar_target(plant_floral_breadth, get_floral_breadth(plant_trait_ready)),
   tar_target(
     sem_data,
     prepare_sem_data(
       pollinator_trait_network, robustness_contributions, fd_contributions,
-      plant_support
+      plant_support, pollinator_social_breadth, plant_floral_breadth, web_list
     )
   ),
   tar_target(contribution_sem, fit_contribution_sem(sem_data)),
+  tar_target(
+    contribution_sem_summary,
+    summarise_contribution_sem(contribution_sem, sem_data)
+  ),
   tar_target(
     trait_network_models_richness,
     compare_trait_network_models(
@@ -190,5 +219,27 @@ list(
         originality = c("originality_z", "log_abundance_z", "log_n_plants_z")
       )
     )
-  )
+  ),
+  tar_target(
+    sim_settings,
+    expand.grid(
+      n_plants = c(5, 10, 15, 20),
+      lambda = c(0, 0.25, 0.5, 0.75, 1),
+      rho = c(-0.5, 0, 0.5),
+      n_rep = 30
+    )
+  ),
+  tar_target(sim_data, simulate_setting(sim_settings), pattern = map(sim_settings)),
+  tar_target(sim_sems, fit_simulated_sems(sim_data)),
+  tar_target(
+    sim_sem_example,
+    fit_simulated_sem(
+      dplyr::filter(sim_data, lambda == 0, rho == 0, n_plants == 20, rep <= 15)
+    )
+  ),
+  tar_target(sim_position_metrics, compare_position_metrics(sim_data)),
+  tar_target(sim_example, {
+    set.seed(3)
+    simulate_network(12, 8, lambda = 0, rho = 0)
+  })
 )
